@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { SiteShell } from "@/components/layout/site-shell";
 import { db } from "@/lib/prisma";
 

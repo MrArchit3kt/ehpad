@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { SiteShell } from "@/components/layout/site-shell";
 import { requireAuth } from "@/server/auth/session";

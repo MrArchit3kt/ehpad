@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SiDiscord, SiWhatsapp } from "react-icons/si";
