@@ -54,7 +54,7 @@ export default async function EventsPage({
       coverImageUrl: true,
       participants: {
         where: {
-          userId: sessionUser.id,
+          userId: sessionUser?.id ?? "__no_user__"
         },
         select: {
           id: true,
