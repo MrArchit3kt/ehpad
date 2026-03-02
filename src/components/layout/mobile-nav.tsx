@@ -1,0 +1,196 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  Menu,
+  X,
+  Home,
+  Shield,
+  CalendarDays,
+  Bell,
+  Settings,
+  UserCircle2,
+  Users,
+  Share2,
+  Mail,
+  LayoutDashboard,
+} from "lucide-react";
+
+const mainLinks = [
+  { href: "/", label: "Accueil", icon: Home },
+  { href: "/profil", label: "Profil", icon: UserCircle2 },
+  { href: "/events", label: "Événements", icon: CalendarDays },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/socials", label: "Réseaux", icon: Share2 },
+  { href: "/contact", label: "Contact", icon: Mail },
+  { href: "/reglement", label: "Règlement", icon: Shield },
+];
+
+const adminLinks = [
+  { href: "/admin", label: "Admin", icon: Settings },
+  { href: "/admin/players", label: "Admin Players", icon: Users },
+  { href: "/admin/mix", label: "Admin Mix", icon: LayoutDashboard },
+  { href: "/admin/events", label: "Admin Events", icon: CalendarDays },
+  { href: "/admin/reglement", label: "Admin Règlement", icon: Shield },
+  { href: "/admin/contact", label: "Admin contact", icon: Mail },
+  { href: "/admin/settings", label: "Admin settings", icon: Settings },
+
+];
+
+type MobileNavProps = {
+  canSeeAdmin: boolean;
+};
+
+export function MobileNav({ canSeeAdmin }: MobileNavProps) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  return (
+    <>
+      <div className="mb-4 flex items-center justify-between lg:hidden">
+        <div className="flex items-center gap-3">
+          <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+            <Image
+              src="/images/ehpad-logo.png"
+              alt="Logo EHPAD"
+              fill
+              className="object-cover"
+            />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+              EHPAD
+            </p>
+            <h2 className="neon-title neon-gradient-text text-base font-black">
+              Squad Manager
+            </h2>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="neon-button-secondary flex h-11 w-11 items-center justify-center"
+          aria-label="Ouvrir le menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      </div>
+
+      {open ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+            aria-label="Fermer le menu"
+          />
+
+          <aside className="absolute left-0 top-0 h-dvh w-[78%] max-w-[320px]">
+            <div className="neon-card flex h-full flex-col rounded-none rounded-r-3xl p-4">
+              <div className="mb-4 flex shrink-0 items-center justify-between border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+                    <Image
+                      src="/images/ehpad-logo.png"
+                      alt="Logo EHPAD"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+                      EHPAD
+                    </p>
+                    <h2 className="neon-title neon-gradient-text text-base font-black">
+                      Squad Manager
+                    </h2>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="neon-button-secondary flex h-10 w-10 items-center justify-center"
+                  aria-label="Fermer le menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <nav className="space-y-2">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+                    Navigation
+                  </p>
+
+                  {mainLinks.map((item) => {
+                    const Icon = item.icon;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className="group flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-medium text-white/80 transition hover:border-cyan-400/15 hover:bg-white/[0.03] hover:text-white"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/5 bg-white/[0.03]">
+                          <Icon className="h-4 w-4 text-cyan-300/90" />
+                        </span>
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                {canSeeAdmin ? (
+                  <div className="mt-6 border-t border-white/5 pt-5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+                      Administration
+                    </p>
+
+                    <div className="space-y-2 pb-6">
+                      {adminLinks.map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setOpen(false)}
+                            className="group flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-medium text-white/75 transition hover:border-pink-400/15 hover:bg-white/[0.03] hover:text-white"
+                          >
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/5 bg-white/[0.03]">
+                              <Icon className="h-4 w-4 text-pink-300/90" />
+                            </span>
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </aside>
+        </div>
+      ) : null}
+    </>
+  );
+}

@@ -1,0 +1,457 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PLAYER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+enum GamePlatform {
+  PC
+  PS5
+  PS4
+  XBOX_SERIES
+  XBOX_ONE
+  OTHER
+}
+
+enum PreferredRole {
+  RUSH
+  SUPPORT
+  SNIPE
+  FLEX
+  IGL
+  NONE
+}
+
+enum WarningType {
+  TOXICITY
+  ABSENCE
+  AFK
+  INSULT
+  CHEATING_SUSPECT
+  TEAM_REFUSAL
+  SPAM
+  OTHER
+}
+
+enum WarningStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum BanSource {
+  AUTOMATIC
+  MANUAL
+}
+
+enum BanStatus {
+  ACTIVE
+  LIFTED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EventParticipantStatus {
+  REGISTERED
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+}
+
+enum NotificationType {
+  EVENT_PUBLISHED
+  EVENT_UPDATED
+  EVENT_REMINDER
+  WARNING_RECEIVED
+  BAN_APPLIED
+  BAN_LIFTED
+  RULES_UPDATED
+  INFO
+}
+
+enum NotificationChannel {
+  IN_APP
+  DISCORD
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum MixSessionStatus {
+  DRAFT
+  GENERATED
+  PUBLISHED
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum MixPlayerStatus {
+  WAITING
+  ASSIGNED
+  SKIPPED
+  LEFT
+}
+
+enum ContactRequestType {
+  ADMIN_REQUEST
+  PLAYER_REPORT
+  BUG
+  IMPROVEMENT
+}
+
+enum ContactRequestStatus {
+  OPEN
+  CLOSED
+}
+
+model SiteConfig {
+  id String @id @default("main")
+
+  siteName           String  @default("EHPAD Squad Manager")
+  homeHeadline       String  @default("EHPAD Warzone Squad")
+  homeDescription    String  @db.Text
+  homeHeroImageUrl   String?
+  discordInviteUrl   String?
+  whatsappInviteUrl  String?
+  siteAccessPassword String?
+
+  socialsEnabled       Boolean @default(true)
+  eventsEnabled        Boolean @default(true)
+  contactEnabled       Boolean @default(true)
+  registrationsEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactRequest {
+  id        String               @id @default(cuid())
+  userId    String
+  type      ContactRequestType
+  subject   String
+  message   String               @db.Text
+  status    ContactRequestStatus @default(OPEN)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  displayName  String
+  username     String     @unique
+  role         UserRole   @default(PLAYER)
+  status       UserStatus @default(ACTIVE)
+
+  warzoneUsername String
+  activisionId    String?
+  platform        GamePlatform?
+  preferredRole   PreferredRole @default(NONE)
+  discordUsername String?
+  discordUserId   String?
+  whatsappNumber  String?
+  whatsappOptIn   Boolean       @default(false)
+  micAvailable    Boolean       @default(true)
+  notes           String?
+  isEhpadMember   Boolean       @default(false)
+
+  isOnline          Boolean   @default(false)
+  isAvailableForMix Boolean   @default(false)
+  lastSeenAt        DateTime?
+  lastLoginAt       DateTime?
+
+  acceptedRulesAt        DateTime?
+  acceptedRulesVersionId String?
+  acceptedRulesVersion   RulesVersion? @relation("AcceptedRulesVersion", fields: [acceptedRulesVersionId], references: [id], onDelete: SetNull)
+
+  bannedAt       DateTime?
+  banReason      String?
+  banTriggerType WarningType?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  warningsReceived      Warning[]          @relation("WarningsReceived")
+  warningsIssued        Warning[]          @relation("WarningsIssued")
+  bansReceived          Ban[]              @relation("BansReceived")
+  bansIssued            Ban[]              @relation("BansIssued")
+  newsCreated           News[]
+  eventsCreated         Event[]
+  rulesVersionsAuthored RulesVersion[]     @relation("RulesVersionAuthor")
+  notifications         Notification[]
+  eventParticipations   EventParticipant[]
+  mixEntries            MixSessionPlayer[]
+  teamMemberships       TeamMember[]
+  mixSessions           MixSession[]
+  contactRequests       ContactRequest[]
+}
+
+model RulesVersion {
+  id            String    @id @default(cuid())
+  versionNumber Int       @unique
+  title         String
+  content       String    @db.Text
+  isActive      Boolean   @default(false)
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  updatedById String?
+  updatedBy   User?   @relation("RulesVersionAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  acceptedByUsers User[] @relation("AcceptedRulesVersion")
+
+  @@index([isActive])
+  @@index([isPublished])
+}
+
+model News {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  content     String    @db.Text
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isPublished])
+  @@index([publishedAt])
+}
+
+model Event {
+  id            String      @id @default(cuid())
+  title         String
+  slug          String      @unique
+  description   String      @db.Text
+  eventDate     DateTime
+  endDate       DateTime?
+  status        EventStatus @default(DRAFT)
+  coverImageUrl String?
+
+  publishToDiscord  Boolean @default(true)
+  publishToWhatsApp Boolean @default(false)
+  publishInApp      Boolean @default(true)
+
+  discordMessageId     String?
+  whatsappBroadcastRef String?
+
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  participants  EventParticipant[]
+  notifications Notification[]
+
+  @@index([eventDate])
+  @@index([status])
+  @@index([isPublished])
+}
+
+model EventParticipant {
+  id        String                 @id @default(cuid())
+  eventId   String
+  userId    String
+  status    EventParticipantStatus @default(REGISTERED)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Warning {
+  id           String        @id @default(cuid())
+  targetUserId String
+  adminUserId  String
+  type         WarningType
+  message      String        @db.Text
+  status       WarningStatus @default(ACTIVE)
+
+  revokedAt        DateTime?
+  revokedReason    String?   @db.Text
+  revokedByAdminId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targetUser User @relation("WarningsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  adminUser  User @relation("WarningsIssued", fields: [adminUserId], references: [id], onDelete: Restrict)
+
+  @@index([targetUserId])
+  @@index([adminUserId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Ban {
+  id           String    @id @default(cuid())
+  targetUserId String
+  adminUserId  String?
+  source       BanSource
+  status       BanStatus @default(ACTIVE)
+
+  reason           String       @db.Text
+  triggerType      WarningType?
+  triggeredByCount Int?
+
+  startedAt  DateTime  @default(now())
+  liftedAt   DateTime?
+  liftReason String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targetUser User  @relation("BansReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  adminUser  User? @relation("BansIssued", fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([targetUserId])
+  @@index([adminUserId])
+  @@index([status])
+  @@index([source])
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  eventId String?
+
+  type    NotificationType
+  channel NotificationChannel @default(IN_APP)
+  status  NotificationStatus  @default(PENDING)
+
+  title   String
+  message String @db.Text
+
+  sentAt      DateTime?
+  readAt      DateTime?
+  externalRef String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([type])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MixSession {
+  id     String           @id @default(cuid())
+  title  String?
+  status MixSessionStatus @default(DRAFT)
+
+  allowTeamsOfThree    Boolean @default(false)
+  keepRemainderAsBench Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  players MixSessionPlayer[]
+  teams   Team[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MixSessionPlayer {
+  id         String          @id @default(cuid())
+  sessionId  String
+  userId     String
+  status     MixPlayerStatus @default(WAITING)
+  joinedAt   DateTime        @default(now())
+  assignedAt DateTime?
+
+  session MixSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Team {
+  id         String   @id @default(cuid())
+  sessionId  String
+  teamNumber Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  session MixSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+
+  @@unique([sessionId, teamNumber])
+  @@index([sessionId])
+}
+
+model TeamMember {
+  id      String   @id @default(cuid())
+  teamId  String
+  userId  String
+  addedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}

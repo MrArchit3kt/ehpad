@@ -1,0 +1,215 @@
+import { redirect } from "next/navigation";
+import { SiteShell } from "@/components/layout/site-shell";
+import { requireAdmin } from "@/server/auth/session";
+import { db } from "@/lib/prisma";
+import { saveSiteConfig } from "@/server/admin/save-site-config";
+
+function getErrorMessage(error?: string) {
+  switch (error) {
+    case "validation":
+      return "Le formulaire est invalide. Vérifie les champs obligatoires.";
+    case "server":
+      return "Erreur serveur pendant la sauvegarde.";
+    default:
+      return null;
+  }
+}
+
+export default async function AdminSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; success?: string }>;
+}) {
+  const admin = await requireAdmin();
+
+  if (!admin) {
+    redirect("/dashboard");
+  }
+
+  const config = await db.siteConfig.findUnique({
+    where: { id: "main" },
+  });
+
+  const sp = (await searchParams) ?? {};
+  const errorMessage = getErrorMessage(sp.error);
+  const isSuccess = sp.success === "1";
+
+  return (
+    <SiteShell>
+      <div className="grid gap-6">
+        <div className="neon-card p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+            Admin Settings
+          </p>
+          <h1 className="neon-title neon-gradient-text mt-3 text-3xl font-black">
+            Configuration globale du site
+          </h1>
+          <p className="neon-text-muted mt-4 max-w-3xl leading-7">
+            Gère les liens publics, le contenu d’accueil et les options générales
+            sans repasser par le code.
+          </p>
+        </div>
+
+        <div className="neon-card p-8">
+          <form action={saveSiteConfig} className="grid gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Nom du site
+                </label>
+                <input
+                  name="siteName"
+                  type="text"
+                  required
+                  defaultValue={config?.siteName ?? "EHPAD Squad Manager"}
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Mot de passe d’accès au site
+                </label>
+                <input
+                  name="siteAccessPassword"
+                  type="text"
+                  defaultValue={config?.siteAccessPassword ?? ""}
+                  placeholder="Laisser vide pour désactiver"
+                  className="w-full px-4 py-3"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-white">
+                Titre d’accueil
+              </label>
+              <input
+                name="homeHeadline"
+                type="text"
+                required
+                defaultValue={config?.homeHeadline ?? "EHPAD Warzone Squad"}
+                className="w-full px-4 py-3"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-white">
+                Description d’accueil
+              </label>
+              <textarea
+                name="homeDescription"
+                rows={5}
+                required
+                defaultValue={
+                  config?.homeDescription ??
+                  "Plateforme de gestion de team, mix automatique, événements, modération et organisation complète de la communauté."
+                }
+                className="w-full px-4 py-3"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-white">
+                Image hero d’accueil (URL ou chemin public)
+              </label>
+              <input
+                name="homeHeroImageUrl"
+                type="text"
+                defaultValue={config?.homeHeroImageUrl ?? "/images/ehpad-hero.png"}
+                placeholder="/images/ehpad-hero.png"
+                className="w-full px-4 py-3"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Lien Discord
+                </label>
+                <input
+                  name="discordInviteUrl"
+                  type="text"
+                  defaultValue={config?.discordInviteUrl ?? ""}
+                  placeholder="https://discord.gg/..."
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Lien WhatsApp
+                </label>
+                <input
+                  name="whatsappInviteUrl"
+                  type="text"
+                  defaultValue={config?.whatsappInviteUrl ?? ""}
+                  placeholder="https://chat.whatsapp.com/..."
+                  className="w-full px-4 py-3"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <input
+                  name="socialsEnabled"
+                  type="checkbox"
+                  defaultChecked={config?.socialsEnabled ?? true}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm text-white">Réseaux activés</span>
+              </label>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <input
+                  name="eventsEnabled"
+                  type="checkbox"
+                  defaultChecked={config?.eventsEnabled ?? true}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm text-white">Événements activés</span>
+              </label>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <input
+                  name="contactEnabled"
+                  type="checkbox"
+                  defaultChecked={config?.contactEnabled ?? true}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm text-white">Contact activé</span>
+              </label>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <input
+                  name="registrationsEnabled"
+                  type="checkbox"
+                  defaultChecked={config?.registrationsEnabled ?? true}
+                  className="h-4 w-4"
+                />
+                <span className="text-sm text-white">Inscriptions activées</span>
+              </label>
+            </div>
+
+            {errorMessage ? (
+              <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
+            ) : null}
+
+            {isSuccess ? (
+              <p className="text-sm font-medium text-emerald-400">
+                Configuration enregistrée avec succès.
+              </p>
+            ) : null}
+
+            <div>
+              <button type="submit" className="neon-button px-6 py-3">
+                Enregistrer la configuration
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </SiteShell>
+  );
+}
