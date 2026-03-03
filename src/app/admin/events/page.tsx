@@ -77,13 +77,11 @@ function isAbsoluteHttpUrl(value: string) {
 
 function getEventImageSrc(imageUrl?: string | null) {
   if (!imageUrl) return null;
+
   const value = imageUrl.trim();
   if (!value) return null;
 
-  // local /uploads/... ou autre chemin local
   if (value.startsWith("/")) return value;
-
-  // url absolue
   if (isAbsoluteHttpUrl(value)) return value;
 
   return null;
@@ -364,12 +362,12 @@ export default async function AdminEventsPage({
                     </div>
 
                     {imageSrc ? (
-                      <div className="border border-white/8 bg-black/30 p-4">
-                        <div className="flex justify-center overflow-hidden rounded-2xl border border-white/8 bg-black/20">
+                      <div className="rounded-2xl border border-white/8 bg-black/30 p-4 md:p-6">
+                        <div className="flex justify-center overflow-auto rounded-2xl border border-white/8 bg-black/20 p-2 md:p-4">
                           <img
                             src={imageSrc}
                             alt={event.title}
-                            className="block h-auto max-h-[28rem] w-full object-contain"
+                            className="block h-auto max-h-[42rem] w-auto max-w-full rounded-xl"
                             loading="lazy"
                           />
                         </div>
