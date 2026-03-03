@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
@@ -52,7 +52,7 @@ export async function deleteLocalEventImage(imageUrl?: string | null) {
   try {
     await fs.unlink(filePath);
   } catch {
-    // Ignore si le fichier a déjà été supprimé ou n'existe pas
+    // Ignore si déjà supprimé
   }
 }
 
