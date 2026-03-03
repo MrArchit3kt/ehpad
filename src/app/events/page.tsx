@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import { SiteShell } from "@/components/layout/site-shell";
 import { db } from "@/lib/prisma";
 import { requireAuth } from "@/server/auth/session";
@@ -28,6 +29,32 @@ function getStatusLabel(status: string) {
   }
 }
 
+function isAbsoluteHttpUrl(value: string) {
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
+function getEventImageSrc(imageUrl?: string | null) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  const value = imageUrl.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  if (value.startsWith("/")) {
+    return value;
+  }
+
+  if (isAbsoluteHttpUrl(value)) {
+    return value;
+  }
+
+  return null;
+}
+
 export default async function EventsPage({
   searchParams,
 }: {
@@ -55,7 +82,7 @@ export default async function EventsPage({
       coverImageUrl: true,
       participants: {
         where: {
-          userId: sessionUser?.id ?? "__no_user__"
+          userId: sessionUser?.id ?? "__no_user__",
         },
         select: {
           id: true,
@@ -106,15 +133,17 @@ export default async function EventsPage({
           <div className="grid gap-6">
             {events.map((event) => {
               const myParticipation = event.participants[0] ?? null;
+              const imageSrc = getEventImageSrc(event.coverImageUrl);
 
               return (
                 <div key={event.id} className="neon-card overflow-hidden p-0">
-                  {event.coverImageUrl ? (
+                  {imageSrc ? (
                     <div className="overflow-hidden border-b border-white/8">
                       <img
-                        src={event.coverImageUrl}
+                        src={imageSrc}
                         alt={event.title}
                         className="h-56 w-full object-cover md:h-72"
+                        loading="lazy"
                       />
                     </div>
                   ) : null}
