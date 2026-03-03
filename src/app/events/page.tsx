@@ -138,13 +138,15 @@ export default async function EventsPage({
               return (
                 <div key={event.id} className="neon-card overflow-hidden p-0">
                   {imageSrc ? (
-                    <div className="overflow-hidden border-b border-white/8">
-                      <img
-                        src={imageSrc}
-                        alt={event.title}
-                        className="h-56 w-full object-cover md:h-72"
-                        loading="lazy"
-                      />
+                    <div className="border-b border-white/8 bg-black/30 p-4">
+                      <div className="flex justify-center overflow-hidden rounded-2xl border border-white/8 bg-black/20">
+                        <img
+                          src={imageSrc}
+                          alt={event.title}
+                          className="block h-auto max-h-[28rem] w-full object-contain"
+                          loading="lazy"
+                        />
+                      </div>
                     </div>
                   ) : null}
 
