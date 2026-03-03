@@ -71,6 +71,24 @@ function getErrorMessage(error?: string) {
   }
 }
 
+function isAbsoluteHttpUrl(value: string) {
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
+function getEventImageSrc(imageUrl?: string | null) {
+  if (!imageUrl) return null;
+  const value = imageUrl.trim();
+  if (!value) return null;
+
+  // local /uploads/... ou autre chemin local
+  if (value.startsWith("/")) return value;
+
+  // url absolue
+  if (isAbsoluteHttpUrl(value)) return value;
+
+  return null;
+}
+
 export default async function AdminEventsPage({
   searchParams,
 }: {
@@ -312,6 +330,8 @@ export default async function AdminEventsPage({
                 (participant) => participant.status === "CANCELLED",
               ).length;
 
+              const imageSrc = getEventImageSrc(event.coverImageUrl);
+
               return (
                 <div key={event.id} className="neon-card p-8">
                   <div className="flex flex-col gap-6">
@@ -343,13 +363,16 @@ export default async function AdminEventsPage({
                       </div>
                     </div>
 
-                    {event.coverImageUrl ? (
-                      <div className="overflow-hidden rounded-2xl border border-white/8">
-                        <img
-                          src={event.coverImageUrl}
-                          alt={event.title}
-                          className="h-56 w-full object-cover"
-                        />
+                    {imageSrc ? (
+                      <div className="border border-white/8 bg-black/30 p-4">
+                        <div className="flex justify-center overflow-hidden rounded-2xl border border-white/8 bg-black/20">
+                          <img
+                            src={imageSrc}
+                            alt={event.title}
+                            className="block h-auto max-h-[28rem] w-full object-contain"
+                            loading="lazy"
+                          />
+                        </div>
                       </div>
                     ) : null}
 
