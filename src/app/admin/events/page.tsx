@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { SiteShell } from "@/components/layout/site-shell";
 import { requireAdmin } from "@/server/auth/session";
@@ -51,6 +52,25 @@ function getPresenceLabel(status: string) {
   }
 }
 
+function getErrorMessage(error?: string) {
+  switch (error) {
+    case "validation":
+      return "Formulaire invalide. Vérifie les champs, les dates et les informations saisies.";
+    case "server":
+      return "Erreur serveur pendant l’action demandée.";
+    case "image_type":
+      return "Format d’image invalide. Utilise uniquement PNG, JPG ou WEBP.";
+    case "image_size":
+      return "Image trop lourde. Taille maximale autorisée : 5 Mo.";
+    case "image_url":
+      return "URL d’image invalide. Utilise une URL http/https valide.";
+    case "not_found":
+      return "Événement introuvable.";
+    default:
+      return null;
+  }
+}
+
 export default async function AdminEventsPage({
   searchParams,
 }: {
@@ -68,8 +88,7 @@ export default async function AdminEventsPage({
   }
 
   const sp = (await searchParams) ?? {};
-  const hasValidationError = sp.error === "validation";
-  const hasServerError = sp.error === "server";
+  const errorMessage = getErrorMessage(sp.error);
   const isSuccess = sp.success === "1";
   const isUpdated = sp.updated === "1";
   const isDeleted = sp.deleted === "1";
@@ -130,7 +149,11 @@ export default async function AdminEventsPage({
         <div className="neon-card p-8">
           <h3 className="text-2xl font-bold text-white">Créer un événement</h3>
 
-          <form action={createEvent} className="mt-6 grid gap-4">
+          <form
+            action={createEvent}
+            encType="multipart/form-data"
+            className="mt-6 grid gap-4"
+          >
             <div>
               <label className="mb-2 block text-sm font-semibold text-white">
                 Titre
@@ -160,7 +183,7 @@ export default async function AdminEventsPage({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-semibold text-white">
-                  Image par URL
+                  Image par URL (optionnel)
                 </label>
                 <input
                   name="coverImageUrl"
@@ -172,14 +195,17 @@ export default async function AdminEventsPage({
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-white">
-                  Image par upload
+                  Image par upload (optionnel)
                 </label>
                 <input
                   name="coverImageFile"
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp"
                   className="w-full px-4 py-3"
                 />
+                <p className="mt-2 text-xs text-white/60">
+                  Formats acceptés : PNG, JPG, WEBP • max 5 Mo
+                </p>
               </div>
             </div>
 
@@ -239,16 +265,8 @@ export default async function AdminEventsPage({
               </label>
             </div>
 
-            {hasValidationError ? (
-              <p className="text-sm font-medium text-rose-400">
-                Formulaire invalide. Vérifie les champs.
-              </p>
-            ) : null}
-
-            {hasServerError ? (
-              <p className="text-sm font-medium text-rose-400">
-                Erreur serveur pendant l’action demandée.
-              </p>
+            {errorMessage ? (
+              <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
             ) : null}
 
             {isSuccess ? (
@@ -407,7 +425,11 @@ export default async function AdminEventsPage({
                       )}
                     </div>
 
-                    <form action={updateEvent} className="grid gap-4">
+                    <form
+                      action={updateEvent}
+                      encType="multipart/form-data"
+                      className="grid gap-4"
+                    >
                       <input type="hidden" name="id" value={event.id} />
 
                       <div>
@@ -455,9 +477,12 @@ export default async function AdminEventsPage({
                           <input
                             name="coverImageFile"
                             type="file"
-                            accept="image/*"
+                            accept="image/png,image/jpeg,image/webp"
                             className="w-full px-4 py-3"
                           />
+                          <p className="mt-2 text-xs text-white/60">
+                            Formats acceptés : PNG, JPG, WEBP • max 5 Mo
+                          </p>
                         </div>
                       </div>
 
