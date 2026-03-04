@@ -8,11 +8,16 @@ import { generateMix } from "@/server/mix/generate-mix";
 import { removePlayerFromPool } from "@/server/mix/remove-player-from-pool";
 import { addPlayerToPool } from "@/server/mix/add-player-to-pool";
 import { createTempPlayer } from "@/server/mix/create-temp-player";
+import { setMixGenerator } from "@/server/mix/set-mix-generator";
 
 function getErrorMessage(error?: string) {
   switch (error) {
     case "invalid_count":
       return "Nombre de joueurs invalide pour une répartition en équipes de 3 et 4 (ex: 1, 2 ou 5).";
+    case "locked":
+      return "Un autre admin est actuellement sélectionné pour générer les équipes.";
+    case "no_mix_admin":
+      return "Sélectionne d’abord un admin autorisé à générer les équipes.";
     case "server":
       return "Erreur serveur pendant l’action demandée.";
     default:
@@ -67,6 +72,8 @@ export default async function AdminMixPage({
     success?: string;
     removed?: string;
     added?: string;
+    lock_set?: string;
+    lock_cleared?: string;
     session?: string;
   }>;
 }) {
@@ -81,6 +88,8 @@ export default async function AdminMixPage({
   const isSuccess = sp.success === "1";
   const isRemoved = sp.removed === "1";
   const isAdded = sp.added === "1";
+  const isLockSet = sp.lock_set === "1";
+  const isLockCleared = sp.lock_cleared === "1";
   const sessionId = sp.session;
 
   const availableUsers = await db.user.findMany({
@@ -139,9 +148,48 @@ export default async function AdminMixPage({
     },
   });
 
+  const onlineAdmins = await db.user.findMany({
+    where: {
+      isOnline: true,
+      status: "ACTIVE",
+      registrationStatus: "APPROVED",
+      role: {
+        in: ["ADMIN", "SUPER_ADMIN"],
+      },
+    },
+    select: {
+      id: true,
+      displayName: true,
+      username: true,
+      role: true,
+    },
+    orderBy: {
+      displayName: "asc",
+    },
+  });
+
+  const mixLock = await db.mixGenerationLock.findUnique({
+    where: { id: "main" },
+    select: {
+      id: true,
+      selectedAdminId: true,
+      selectedAdmin: {
+        select: {
+          id: true,
+          displayName: true,
+          username: true,
+          role: true,
+        },
+      },
+    },
+  });
+
   const totalPoolCount = availableUsers.length + availableTempPlayers.length;
   const poolDistribution = formatTeamSizesPreview(totalPoolCount);
-  const canGenerate = poolDistribution !== "Impossible";
+  const canGenerateByCount = poolDistribution !== "Impossible";
+  const canCurrentAdminGenerate =
+    !!mixLock?.selectedAdminId && mixLock.selectedAdminId === admin.id;
+  const canGenerate = canGenerateByCount && canCurrentAdminGenerate;
 
   const latestSession = sessionId
     ? await db.mixSession.findUnique({
@@ -227,6 +275,52 @@ export default async function AdminMixPage({
           <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                Admin autorisé à générer
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-white">
+                Contrôle du générateur
+              </h3>
+              <p className="neon-text-muted mt-2 text-sm">
+                Un seul admin peut générer les équipes à la fois. Tous les admins ont les mêmes droits.
+              </p>
+
+              <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                  Admin actuellement sélectionné
+                </p>
+                <p className="mt-2 text-sm text-white">
+                  {mixLock?.selectedAdmin
+                    ? `${mixLock.selectedAdmin.displayName} (@${mixLock.selectedAdmin.username})`
+                    : "Aucun admin sélectionné"}
+                </p>
+              </div>
+            </div>
+
+            <form action={setMixGenerator} className="grid gap-3">
+              <select
+                name="selectedAdminId"
+                defaultValue={mixLock?.selectedAdminId ?? ""}
+                className="w-full px-4 py-3"
+              >
+                <option value="">Aucun admin</option>
+                {onlineAdmins.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.displayName} (@{item.username}) — {item.role}
+                  </option>
+                ))}
+              </select>
+
+              <button type="submit" className="neon-button px-5 py-3">
+                Enregistrer la sélection
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="neon-card p-6 md:p-8">
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                 Ajouter un joueur temporaire
               </p>
               <h3 className="mt-2 text-xl font-bold text-white">
@@ -305,6 +399,24 @@ export default async function AdminMixPage({
             </div>
           </div>
 
+          {mixLock?.selectedAdmin ? (
+            <p className="mt-4 text-sm text-white/80">
+              Admin autorisé :{" "}
+              <span className="font-semibold text-white">
+                {mixLock.selectedAdmin.displayName}
+              </span>
+              {mixLock.selectedAdmin.username
+                ? ` (@${mixLock.selectedAdmin.username})`
+                : ""}
+              .
+              {!canCurrentAdminGenerate ? " Tu ne peux pas générer tant que cette sélection est active." : " Tu peux générer les équipes."}
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-amber-300">
+              Aucun admin n’est encore sélectionné pour générer les équipes.
+            </p>
+          )}
+
           {errorMessage ? (
             <p className="mt-5 text-sm font-medium text-rose-400">{errorMessage}</p>
           ) : null}
@@ -324,6 +436,18 @@ export default async function AdminMixPage({
           {isAdded ? (
             <p className="mt-5 text-sm font-medium text-emerald-300">
               Joueur ajouté au pool avec succès.
+            </p>
+          ) : null}
+
+          {isLockSet ? (
+            <p className="mt-5 text-sm font-medium text-cyan-300">
+              Admin autorisé à générer mis à jour avec succès.
+            </p>
+          ) : null}
+
+          {isLockCleared ? (
+            <p className="mt-5 text-sm font-medium text-amber-300">
+              Sélection de l’admin générateur retirée.
             </p>
           ) : null}
 

@@ -4,6 +4,16 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
 
+function isNextRedirectError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
 export async function removePlayerFromPool(formData: FormData) {
   const admin = await requireAdmin();
 
@@ -36,6 +46,10 @@ export async function removePlayerFromPool(formData: FormData) {
       });
     }
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
     console.error("REMOVE_PLAYER_FROM_POOL_ERROR", error);
     redirect("/admin/mix?error=server");
   }

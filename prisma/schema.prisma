@@ -243,6 +243,8 @@ model User {
   tempPlayersCreated TempPlayer[] @relation("CreatedTempPlayers")
   tempPlayersLinked  TempPlayer[] @relation("LinkedTempPlayers")
 
+  mixGenerationLocks MixGenerationLock[] @relation("MixGenerationLockSelectedAdmin")
+
   @@index([registrationStatus])
   @@index([approvedById])
   @@index([rejectedById])
@@ -532,4 +534,14 @@ model RoleChangeLog {
   @@index([targetUserId, createdAt])
   @@index([adminUserId, createdAt])
   @@index([createdAt])
+}
+
+model MixGenerationLock {
+  id              String   @id @default("main")
+  selectedAdminId String?
+  updatedAt       DateTime @updatedAt
+
+  selectedAdmin User? @relation("MixGenerationLockSelectedAdmin", fields: [selectedAdminId], references: [id], onDelete: SetNull)
+
+  @@index([selectedAdminId])
 }

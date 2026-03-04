@@ -14,6 +14,16 @@ type PoolPlayer =
       id: string;
     };
 
+function isNextRedirectError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
 function shuffle<T>(items: T[]) {
   const arr = [...items];
 
@@ -46,6 +56,21 @@ export async function generateMix() {
 
   if (!admin) {
     redirect("/dashboard");
+  }
+
+  const mixLock = await db.mixGenerationLock.findUnique({
+    where: { id: "main" },
+    select: {
+      selectedAdminId: true,
+    },
+  });
+
+  if (!mixLock?.selectedAdminId) {
+    redirect("/admin/mix?error=no_mix_admin");
+  }
+
+  if (mixLock.selectedAdminId !== admin.id) {
+    redirect("/admin/mix?error=locked");
   }
 
   const users = await db.user.findMany({
@@ -166,6 +191,10 @@ export async function generateMix() {
 
     redirect(`/admin/mix?success=1&session=${session.id}`);
   } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
     console.error("GENERATE_MIX_ERROR", error);
     redirect("/admin/mix?error=server");
   }
