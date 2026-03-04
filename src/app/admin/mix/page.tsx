@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { SiteShell } from "@/components/layout/site-shell";
 import { requireAdmin } from "@/server/auth/session";
 import { db } from "@/lib/prisma";
 import { generateMix } from "@/server/mix/generate-mix";
 import { removePlayerFromPool } from "@/server/mix/remove-player-from-pool";
-import { AdminPoolAdder } from "@/components/admin/admin-pool-adder";
+import { addPlayerToPool } from "@/server/mix/add-player-to-pool";
+import { createTempPlayer } from "@/server/mix/create-temp-player";
 
 function getErrorMessage(error?: string) {
   switch (error) {
@@ -81,9 +83,10 @@ export default async function AdminMixPage({
   const isAdded = sp.added === "1";
   const sessionId = sp.session;
 
-  const availablePlayers = await db.user.findMany({
+  const availableUsers = await db.user.findMany({
     where: {
       status: "ACTIVE",
+      registrationStatus: "APPROVED",
       isAvailableForMix: true,
     },
     select: {
@@ -98,13 +101,30 @@ export default async function AdminMixPage({
     },
   });
 
-  const availablePlayerIds = availablePlayers.map((player) => player.id);
+  const availableTempPlayers = await db.tempPlayer.findMany({
+    where: {
+      isAvailableForMix: true,
+    },
+    select: {
+      id: true,
+      nickname: true,
+      note: true,
+      createdAt: true,
+    },
+    orderBy: {
+      nickname: "asc",
+    },
+  });
+
+  const availableUserIds = availableUsers.map((player) => player.id);
 
   const poolCandidates = await db.user.findMany({
     where: {
       status: "ACTIVE",
+      registrationStatus: "APPROVED",
+      isAvailableForMix: false,
       id: {
-        notIn: availablePlayerIds.length > 0 ? availablePlayerIds : undefined,
+        notIn: availableUserIds.length > 0 ? availableUserIds : undefined,
       },
     },
     select: {
@@ -119,7 +139,8 @@ export default async function AdminMixPage({
     },
   });
 
-  const poolDistribution = formatTeamSizesPreview(availablePlayers.length);
+  const totalPoolCount = availableUsers.length + availableTempPlayers.length;
+  const poolDistribution = formatTeamSizesPreview(totalPoolCount);
   const canGenerate = poolDistribution !== "Impossible";
 
   const latestSession = sessionId
@@ -138,6 +159,13 @@ export default async function AdminMixPage({
                       username: true,
                       warzoneUsername: true,
                       platform: true,
+                    },
+                  },
+                  tempPlayer: {
+                    select: {
+                      id: true,
+                      nickname: true,
+                      note: true,
                     },
                   },
                 },
@@ -165,6 +193,13 @@ export default async function AdminMixPage({
                       platform: true,
                     },
                   },
+                  tempPlayer: {
+                    select: {
+                      id: true,
+                      nickname: true,
+                      note: true,
+                    },
+                  },
                 },
               },
             },
@@ -189,15 +224,48 @@ export default async function AdminMixPage({
         </div>
 
         <div className="neon-card p-6 md:p-8">
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                Ajouter un joueur temporaire
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-white">
+                Joueur invité sans compte
+              </h3>
+              <p className="neon-text-muted mt-2 text-sm">
+                Crée un joueur temporaire avec seulement un pseudo pour l’ajouter immédiatement au pool.
+              </p>
+            </div>
+
+            <form action={createTempPlayer} className="grid gap-3">
+              <input
+                name="nickname"
+                type="text"
+                required
+                placeholder="Pseudo Warzone"
+                className="w-full px-4 py-3"
+              />
+              <input
+                name="note"
+                type="text"
+                placeholder="Note optionnelle"
+                className="w-full px-4 py-3"
+              />
+              <button type="submit" className="neon-button px-5 py-3">
+                Ajouter le joueur temporaire
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="neon-card p-6 md:p-8">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                 Joueurs disponibles
               </p>
               <h3 className="mt-2 text-2xl font-bold text-white">
-                {availablePlayers.length} joueur
-                {availablePlayers.length > 1 ? "s" : ""} prêt
-                {availablePlayers.length > 1 ? "s" : ""}
+                {totalPoolCount} joueur{totalPoolCount > 1 ? "s" : ""} prêt{totalPoolCount > 1 ? "s" : ""}
               </h3>
               <p className="neon-text-muted mt-2 text-sm">
                 Les joueurs restent dans le pool jusqu’à retrait manuel ou déconnexion.
@@ -210,7 +278,7 @@ export default async function AdminMixPage({
                   Total pool
                 </p>
                 <p className="neon-title neon-gradient-text mt-1 text-xl font-black md:text-2xl">
-                  {availablePlayers.length}
+                  {totalPoolCount}
                 </p>
               </div>
 
@@ -260,14 +328,100 @@ export default async function AdminMixPage({
           ) : null}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {availablePlayers.length === 0 ? (
+            {totalPoolCount === 0 ? (
               <div className="neon-card-soft p-5">
                 <p className="neon-text-muted text-sm">
                   Aucun joueur disponible pour le moment.
                 </p>
               </div>
             ) : (
-              availablePlayers.map((player) => (
+              <>
+                {availableUsers.map((player) => (
+                  <div key={`user-${player.id}`} className="neon-card-soft p-4">
+                    <h4 className="text-sm font-bold text-white md:text-base">
+                      {player.displayName}
+                    </h4>
+                    <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                      @{player.username}
+                    </p>
+                    <p className="neon-text-muted mt-2 text-xs md:text-sm">
+                      Warzone : <span className="text-white">{player.warzoneUsername}</span>
+                    </p>
+                    <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                      Plateforme :{" "}
+                      <span className="text-white">
+                        {player.platform ?? "Non renseignée"}
+                      </span>
+                    </p>
+
+                    <div className="mt-3">
+                      <form action={removePlayerFromPool}>
+                        <input type="hidden" name="userId" value={player.id} />
+                        <button
+                          type="submit"
+                          className="neon-button-secondary w-full px-4 py-2.5 text-sm"
+                        >
+                          Retirer du pool
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+
+                {availableTempPlayers.map((player) => (
+                  <div key={`temp-${player.id}`} className="neon-card-soft p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-bold text-white md:text-base">
+                        {player.nickname}
+                      </h4>
+                      <span className="neon-badge text-[10px]">INVITÉ</span>
+                    </div>
+
+                    <p className="neon-text-muted mt-2 text-xs md:text-sm">
+                      Joueur temporaire sans compte
+                    </p>
+
+                    {player.note ? (
+                      <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                        Note : <span className="text-white">{player.note}</span>
+                      </p>
+                    ) : null}
+
+                    <div className="mt-3">
+                      <form action={removePlayerFromPool}>
+                        <input type="hidden" name="tempPlayerId" value={player.id} />
+                        <button
+                          type="submit"
+                          className="neon-button-secondary w-full px-4 py-2.5 text-sm"
+                        >
+                          Retirer du pool
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="neon-card p-6 md:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+            Ajouter un joueur existant
+          </p>
+          <h3 className="mt-2 text-xl font-bold text-white">
+            Ajouter un joueur inscrit au pool
+          </h3>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {poolCandidates.length === 0 ? (
+              <div className="neon-card-soft p-5">
+                <p className="neon-text-muted text-sm">
+                  Aucun joueur éligible à ajouter pour le moment.
+                </p>
+              </div>
+            ) : (
+              poolCandidates.map((player) => (
                 <div key={player.id} className="neon-card-soft p-4">
                   <h4 className="text-sm font-bold text-white md:text-base">
                     {player.displayName}
@@ -286,13 +440,13 @@ export default async function AdminMixPage({
                   </p>
 
                   <div className="mt-3">
-                    <form action={removePlayerFromPool}>
+                    <form action={addPlayerToPool}>
                       <input type="hidden" name="userId" value={player.id} />
                       <button
                         type="submit"
-                        className="neon-button-secondary w-full px-4 py-2.5 text-sm"
+                        className="neon-button w-full px-4 py-2.5 text-sm"
                       >
-                        Retirer du pool
+                        Ajouter au pool
                       </button>
                     </form>
                   </div>
@@ -301,8 +455,6 @@ export default async function AdminMixPage({
             )}
           </div>
         </div>
-
-        <AdminPoolAdder players={poolCandidates} />
 
         {latestSession ? (
           <div className="neon-card p-6 md:p-8">
@@ -317,8 +469,7 @@ export default async function AdminMixPage({
               </div>
 
               <span className="neon-badge">
-                {latestSession.teams.length} team
-                {latestSession.teams.length > 1 ? "s" : ""}
+                {latestSession.teams.length} team{latestSession.teams.length > 1 ? "s" : ""}
               </span>
             </div>
 
@@ -335,22 +486,42 @@ export default async function AdminMixPage({
                   </div>
 
                   <div className="mt-3 grid gap-2">
-                    {team.members.map((member) => (
-                      <div
-                        key={member.id}
-                        className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
-                      >
-                        <p className="text-sm font-semibold text-white">
-                          {member.user.displayName}
-                        </p>
-                        <p className="neon-text-muted mt-0.5 text-xs">
-                          @{member.user.username}
-                        </p>
-                        <p className="neon-text-muted mt-1 text-xs">
-                          {member.user.warzoneUsername}
-                        </p>
-                      </div>
-                    ))}
+                    {team.members.map((member) => {
+                      const label = member.user
+                        ? member.user.displayName
+                        : member.tempPlayer?.nickname ?? "Invité";
+
+                      const subLabel = member.user
+                        ? `@${member.user.username}`
+                        : "Joueur temporaire";
+
+                      const warzone = member.user
+                        ? member.user.warzoneUsername
+                        : member.tempPlayer?.note ?? "Invité";
+
+                      return (
+                        <div
+                          key={member.id}
+                          className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-white">
+                              {label}
+                            </p>
+                            {!member.user ? (
+                              <span className="neon-badge text-[10px]">INVITÉ</span>
+                            ) : null}
+                          </div>
+
+                          <p className="neon-text-muted mt-0.5 text-xs">
+                            {subLabel}
+                          </p>
+                          <p className="neon-text-muted mt-1 text-xs">
+                            {warzone}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

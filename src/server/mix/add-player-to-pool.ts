@@ -23,10 +23,15 @@ export async function addPlayerToPool(formData: FormData) {
       select: {
         id: true,
         status: true,
+        registrationStatus: true,
       },
     });
 
-    if (!user || user.status !== "ACTIVE") {
+    if (!user) {
+      redirect("/admin/mix?error=server");
+    }
+
+    if (user.status !== "ACTIVE" || user.registrationStatus !== "APPROVED") {
       redirect("/admin/mix?error=server");
     }
 
