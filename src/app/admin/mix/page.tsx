@@ -271,84 +271,92 @@ export default async function AdminMixPage({
           </p>
         </div>
 
-        <div className="neon-card p-5 md:p-6">
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.95fr] xl:items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                Admin autorisé à générer
-              </p>
-              <h3 className="mt-2 text-lg font-bold text-white md:text-xl">
-                Contrôle du générateur
-              </h3>
-              <p className="neon-text-muted mt-2 text-sm leading-6">
-                Un seul admin peut générer les équipes à la fois. Tous les admins ont les mêmes droits.
-              </p>
-
-              <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                  Admin actuellement sélectionné
+        <div className="grid gap-4 2xl:grid-cols-2">
+          <div className="neon-card p-4 md:p-5">
+            <div className="grid gap-3 xl:grid-cols-[1fr_320px] xl:items-start">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                  Admin autorisé à générer
                 </p>
-                <p className="mt-1.5 text-sm text-white">
-                  {mixLock?.selectedAdmin
-                    ? `${mixLock.selectedAdmin.displayName} (@${mixLock.selectedAdmin.username})`
-                    : "Aucun admin sélectionné"}
+                <h3 className="mt-1.5 text-base font-bold text-white md:text-lg">
+                  Contrôle du générateur
+                </h3>
+                <p className="neon-text-muted mt-2 max-w-md text-xs leading-5 md:text-sm">
+                  Un seul admin peut générer les équipes à la fois. Tous les admins ont les mêmes droits.
+                </p>
+
+                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                    Admin actuellement sélectionné
+                  </p>
+                  <p className="mt-1.5 truncate text-xs text-white md:text-sm">
+                    {mixLock?.selectedAdmin
+                      ? `${mixLock.selectedAdmin.displayName} (@${mixLock.selectedAdmin.username})`
+                      : "Aucun admin sélectionné"}
+                  </p>
+                </div>
+              </div>
+
+              <form action={setMixGenerator} className="grid gap-2 self-start">
+                <select
+                  name="selectedAdminId"
+                  defaultValue={mixLock?.selectedAdminId ?? ""}
+                  className="w-full px-3 py-2.5 text-sm"
+                >
+                  <option value="">Aucun admin</option>
+                  {onlineAdmins.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.displayName} (@{item.username}) — {item.role}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="submit"
+                  className="neon-button w-full px-4 py-2.5 text-sm"
+                >
+                  Enregistrer la sélection
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="neon-card p-4 md:p-5">
+            <div className="grid gap-3 xl:grid-cols-[1fr_320px] xl:items-start">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                  Ajouter un joueur temporaire
+                </p>
+                <h3 className="mt-1.5 text-base font-bold text-white md:text-lg">
+                  Joueur invité sans compte
+                </h3>
+                <p className="neon-text-muted mt-2 max-w-md text-xs leading-5 md:text-sm">
+                  Crée un joueur temporaire avec seulement un pseudo pour l’ajouter immédiatement au pool.
                 </p>
               </div>
+
+              <form action={createTempPlayer} className="grid gap-2 self-start">
+                <input
+                  name="nickname"
+                  type="text"
+                  required
+                  placeholder="Pseudo Warzone"
+                  className="w-full px-3 py-2.5 text-sm"
+                />
+                <input
+                  name="note"
+                  type="text"
+                  placeholder="Note optionnelle"
+                  className="w-full px-3 py-2.5 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="neon-button w-full px-4 py-2.5 text-sm"
+                >
+                  Ajouter le joueur temporaire
+                </button>
+              </form>
             </div>
-
-            <form action={setMixGenerator} className="grid gap-2.5">
-              <select
-                name="selectedAdminId"
-                defaultValue={mixLock?.selectedAdminId ?? ""}
-                className="w-full px-4 py-3"
-              >
-                <option value="">Aucun admin</option>
-                {onlineAdmins.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.displayName} (@{item.username}) — {item.role}
-                  </option>
-                ))}
-              </select>
-
-              <button type="submit" className="neon-button px-5 py-3">
-                Enregistrer la sélection
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="neon-card p-5 md:p-6">
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.95fr] xl:items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                Ajouter un joueur temporaire
-              </p>
-              <h3 className="mt-2 text-lg font-bold text-white md:text-xl">
-                Joueur invité sans compte
-              </h3>
-              <p className="neon-text-muted mt-2 text-sm leading-6">
-                Crée un joueur temporaire avec seulement un pseudo pour l’ajouter immédiatement au pool.
-              </p>
-            </div>
-
-            <form action={createTempPlayer} className="grid gap-2.5">
-              <input
-                name="nickname"
-                type="text"
-                required
-                placeholder="Pseudo Warzone"
-                className="w-full px-4 py-3"
-              />
-              <input
-                name="note"
-                type="text"
-                placeholder="Note optionnelle"
-                className="w-full px-4 py-3"
-              />
-              <button type="submit" className="neon-button px-5 py-3">
-                Ajouter le joueur temporaire
-              </button>
-            </form>
           </div>
         </div>
 
@@ -472,7 +480,8 @@ export default async function AdminMixPage({
                       @{player.username}
                     </p>
                     <p className="neon-text-muted mt-2 truncate text-[11px]">
-                      Warzone : <span className="text-white">{player.warzoneUsername}</span>
+                      Warzone :{" "}
+                      <span className="text-white">{player.warzoneUsername}</span>
                     </p>
                     <p className="neon-text-muted mt-1 truncate text-[11px]">
                       Plateforme :{" "}
@@ -516,7 +525,11 @@ export default async function AdminMixPage({
 
                     <div className="mt-2.5">
                       <form action={removePlayerFromPool}>
-                        <input type="hidden" name="tempPlayerId" value={player.id} />
+                        <input
+                          type="hidden"
+                          name="tempPlayerId"
+                          value={player.id}
+                        />
                         <button
                           type="submit"
                           className="neon-button-secondary w-full px-3 py-2 text-xs"
@@ -557,7 +570,8 @@ export default async function AdminMixPage({
                     @{player.username}
                   </p>
                   <p className="neon-text-muted mt-2 truncate text-[11px]">
-                    Warzone : <span className="text-white">{player.warzoneUsername}</span>
+                    Warzone :{" "}
+                    <span className="text-white">{player.warzoneUsername}</span>
                   </p>
                   <p className="neon-text-muted mt-1 truncate text-[11px]">
                     Plateforme :{" "}
@@ -596,7 +610,8 @@ export default async function AdminMixPage({
               </div>
 
               <span className="neon-badge">
-                {latestSession.teams.length} team{latestSession.teams.length > 1 ? "s" : ""}
+                {latestSession.teams.length} team
+                {latestSession.teams.length > 1 ? "s" : ""}
               </span>
             </div>
 
@@ -608,7 +623,8 @@ export default async function AdminMixPage({
                       Team {team.teamNumber}
                     </h4>
                     <span className="neon-badge text-[10px]">
-                      {team.members.length} joueur{team.members.length > 1 ? "s" : ""}
+                      {team.members.length} joueur
+                      {team.members.length > 1 ? "s" : ""}
                     </span>
                   </div>
 
