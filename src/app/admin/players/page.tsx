@@ -10,6 +10,7 @@ import { liftBan } from "@/server/admin/lift-ban";
 import { resetPlayerPassword } from "@/server/admin/reset-player-password";
 import { toggleEhpadMember } from "@/server/admin/toggle-ehpad-member";
 import { toggleUserRole } from "@/server/admin/toggle-user-role";
+import { deletePlayer } from "@/server/admin/delete-player";
 import { AdminPlayersRealtime } from "@/components/admin/admin-players-realtime";
 
 function formatDate(value: Date | null) {
@@ -46,6 +47,8 @@ function getErrorMessage(error?: string) {
       return "Tu ne peux pas modifier ton propre rôle.";
     case "super_admin_locked":
       return "Le rôle d’un super admin ne peut pas être modifié ici.";
+    case "self_delete":
+      return "Tu ne peux pas supprimer ton propre compte.";
     default:
       return null;
   }
@@ -124,6 +127,10 @@ export default async function AdminPlayersPage({
     password_reset?: string;
     ehpad?: string;
     role_updated?: string;
+    deleted?: string;
+    q?: string;
+    role?: string;
+    status?: string;
   }>;
 }) {
   const admin = await requireAdmin();
@@ -142,8 +149,46 @@ export default async function AdminPlayersPage({
   const isEhpadEnabled = sp.ehpad === "1";
   const isEhpadDisabled = sp.ehpad === "0";
   const isRoleUpdated = sp.role_updated === "1";
+  const isDeleted = sp.deleted === "1";
+
+  const searchQuery = (sp.q ?? "").trim();
+  const roleFilter = (sp.role ?? "").trim();
+  const statusFilter = (sp.status ?? "").trim();
 
   const players = await db.user.findMany({
+    where: {
+      ...(searchQuery
+        ? {
+            OR: [
+              {
+                displayName: {
+                  contains: searchQuery,
+                  mode: "insensitive",
+                },
+              },
+              {
+                username: {
+                  contains: searchQuery,
+                  mode: "insensitive",
+                },
+              },
+              {
+                email: {
+                  contains: searchQuery,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }
+        : {}),
+      ...(roleFilter &&
+      ["PLAYER", "ADMIN", "SUPER_ADMIN"].includes(roleFilter)
+        ? { role: roleFilter as "PLAYER" | "ADMIN" | "SUPER_ADMIN" }
+        : {}),
+      ...(statusFilter && ["ACTIVE", "INACTIVE", "BANNED"].includes(statusFilter)
+        ? { status: statusFilter as "ACTIVE" | "INACTIVE" | "BANNED" }
+        : {}),
+    },
     orderBy: {
       createdAt: "asc",
     },
@@ -230,48 +275,95 @@ export default async function AdminPlayersPage({
 
       <div className="grid gap-6">
         <div className="neon-card p-6 md:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-                Admin Players
-              </p>
-              <h2 className="neon-title neon-gradient-text mt-3 text-2xl font-black md:text-3xl">
-                Suivi des joueurs
-              </h2>
-              <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-                Vue admin de l’activité, de l’inactivité, des membres EHPAD et de
-                la modération des joueurs.
-              </p>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+                  Admin Players
+                </p>
+                <h2 className="neon-title neon-gradient-text mt-3 text-2xl font-black md:text-3xl">
+                  Suivi des joueurs
+                </h2>
+                <p className="neon-text-muted mt-4 max-w-3xl leading-7">
+                  Vue admin de l’activité, de l’inactivité, des membres EHPAD et de
+                  la modération des joueurs.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="neon-card-soft px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                    Total joueurs
+                  </p>
+                  <p className="neon-title neon-gradient-text mt-1 text-xl font-black md:text-2xl">
+                    {rows.length}
+                  </p>
+                </div>
+
+                <div className="neon-card-soft px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
+                    Membres EHPAD
+                  </p>
+                  <p className="mt-1 text-xl font-black text-white md:text-2xl">
+                    {ehpadCount}
+                  </p>
+                </div>
+
+                <div className="neon-card-soft px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+                    Alertes 10j+
+                  </p>
+                  <p className="mt-1 text-xl font-black text-white md:text-2xl">
+                    {alertCount}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="neon-card-soft px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                  Total joueurs
-                </p>
-                <p className="neon-title neon-gradient-text mt-1 text-xl font-black md:text-2xl">
-                  {rows.length}
-                </p>
-              </div>
+            <form method="GET" className="grid gap-3 md:grid-cols-[1.6fr_1fr_1fr_auto]">
+              <input
+                type="text"
+                name="q"
+                defaultValue={searchQuery}
+                placeholder="Rechercher un joueur (nom, pseudo, email)"
+                className="w-full px-4 py-3"
+              />
 
-              <div className="neon-card-soft px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
-                  Membres EHPAD
-                </p>
-                <p className="mt-1 text-xl font-black text-white md:text-2xl">
-                  {ehpadCount}
-                </p>
-              </div>
+              <select
+                name="role"
+                defaultValue={roleFilter}
+                className="w-full px-4 py-3"
+              >
+                <option value="">Tous les rôles</option>
+                <option value="PLAYER">Player</option>
+                <option value="ADMIN">Admin</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
 
-              <div className="neon-card-soft px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-                  Alertes 10j+
-                </p>
-                <p className="mt-1 text-xl font-black text-white md:text-2xl">
-                  {alertCount}
-                </p>
+              <select
+                name="status"
+                defaultValue={statusFilter}
+                className="w-full px-4 py-3"
+              >
+                <option value="">Tous les statuts</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+                <option value="BANNED">BANNED</option>
+              </select>
+
+              <div className="flex gap-3">
+                <button type="submit" className="neon-button px-5 py-3">
+                  Rechercher
+                </button>
+
+                <a
+                  href="/admin/players"
+                  className="neon-button-secondary inline-flex items-center justify-center px-5 py-3"
+                >
+                  Reset
+                </a>
               </div>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -342,6 +434,14 @@ export default async function AdminPlayersPage({
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-cyan-300">
               Rôle du joueur mis à jour avec succès.
+            </p>
+          </div>
+        ) : null}
+
+        {isDeleted ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-amber-300">
+              Joueur supprimé avec succès.
             </p>
           </div>
         ) : null}
@@ -662,58 +762,81 @@ export default async function AdminPlayersPage({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                        Historique des changements de rôle
-                      </p>
-                      <span className="neon-badge">
-                        {player.roleHistory.length} total
-                      </span>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                          Historique des changements de rôle
+                        </p>
+                        <span className="neon-badge">
+                          {player.roleHistory.length} total
+                        </span>
+                      </div>
+
+                      {player.roleHistory.length === 0 ? (
+                        <p className="neon-text-muted mt-4 text-sm">
+                          Aucun changement de rôle enregistré pour ce joueur.
+                        </p>
+                      ) : (
+                        <div className="mt-4 grid gap-3">
+                          {player.roleHistory.map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="rounded-2xl border border-white/8 bg-black/20 p-4"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={getRoleBadgeClass(entry.previousRole)}
+                                >
+                                  {getRoleLabel(entry.previousRole)}
+                                </span>
+
+                                <span className="text-white/50">→</span>
+
+                                <span className={getRoleBadgeClass(entry.nextRole)}>
+                                  {getRoleLabel(entry.nextRole)}
+                                </span>
+
+                                <span className="text-xs text-white/50">
+                                  {formatDate(entry.createdAt)}
+                                </span>
+                              </div>
+
+                              <p className="mt-3 text-sm text-white">
+                                Modifié par{" "}
+                                <span className="font-semibold">
+                                  {entry.adminUser?.displayName ?? "Admin inconnu"}
+                                </span>
+                                {entry.adminUser?.username
+                                  ? ` (@${entry.adminUser.username})`
+                                  : ""}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {player.roleHistory.length === 0 ? (
-                      <p className="neon-text-muted mt-4 text-sm">
-                        Aucun changement de rôle enregistré pour ce joueur.
+                    <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.04] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-300/80">
+                        Suppression du joueur
                       </p>
-                    ) : (
-                      <div className="mt-4 grid gap-3">
-                        {player.roleHistory.map((entry) => (
-                          <div
-                            key={entry.id}
-                            className="rounded-2xl border border-white/8 bg-black/20 p-4"
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span
-                                className={getRoleBadgeClass(entry.previousRole)}
-                              >
-                                {getRoleLabel(entry.previousRole)}
-                              </span>
 
-                              <span className="text-white/50">→</span>
+                      <p className="mt-2 text-sm leading-6 text-white/75">
+                        Cette action supprime définitivement ce compte et ses
+                        données liées en cascade.
+                      </p>
 
-                              <span className={getRoleBadgeClass(entry.nextRole)}>
-                                {getRoleLabel(entry.nextRole)}
-                              </span>
-
-                              <span className="text-xs text-white/50">
-                                {formatDate(entry.createdAt)}
-                              </span>
-                            </div>
-
-                            <p className="mt-3 text-sm text-white">
-                              Modifié par{" "}
-                              <span className="font-semibold">
-                                {entry.adminUser?.displayName ?? "Admin inconnu"}
-                              </span>
-                              {entry.adminUser?.username
-                                ? ` (@${entry.adminUser.username})`
-                                : ""}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      <form action={deletePlayer} className="mt-3">
+                        <input type="hidden" name="userId" value={player.id} />
+                        <button
+                          type="submit"
+                          className="neon-button-secondary w-full px-5 py-3"
+                        >
+                          Supprimer le joueur
+                        </button>
+                      </form>
+                    </div>
                   </div>
 
                   {player.status === "BANNED" ? (
