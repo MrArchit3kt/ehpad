@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -10,6 +11,7 @@ import {
   Share2,
   Mail,
   SlidersHorizontal,
+  UserCheck,
 } from "lucide-react";
 import { SiteShell } from "@/components/layout/site-shell";
 import { requireAdmin } from "@/server/auth/session";
@@ -22,9 +24,15 @@ const cards = [
     icon: Users,
   },
   {
+    href: "/admin/registrations",
+    title: "Inscriptions",
+    description: "Valider, refuser et suivre les demandes d’inscription.",
+    icon: UserCheck,
+  },
+  {
     href: "/admin/mix",
     title: "Mix",
-    description: "Pool, ajout manuel, génération des équipes.",
+    description: "Pool, ajout manuel, joueurs temporaires et génération des équipes.",
     icon: LayoutDashboard,
   },
   {
@@ -82,8 +90,8 @@ export default async function AdminHomePage() {
           </h1>
 
           <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-            Gère la communauté EHPAD : joueurs, mix, événements, demandes de
-            contact, règlement et configuration globale du site.
+            Gère la communauté EHPAD : joueurs, inscriptions, mix, événements,
+            demandes de contact, règlement et configuration globale du site.
           </p>
         </div>
 
@@ -92,7 +100,11 @@ export default async function AdminHomePage() {
             const Icon = card.icon;
 
             return (
-              <Link key={card.href} href={card.href} className="neon-card p-6">
+              <Link
+                key={card.href}
+                href={card.href}
+                className="neon-card p-6 transition hover:-translate-y-0.5"
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.06]">
                     <Icon className="h-5 w-5 text-cyan-300" />
