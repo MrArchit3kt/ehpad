@@ -79,6 +79,10 @@ export async function requireAuth() {
       redirect("/approval-rejected");
     }
 
+    if (user.status === "BANNED") {
+      return null;
+    }
+
     return user;
   } catch (error) {
     console.error("REQUIRE_AUTH_ERROR", error);
