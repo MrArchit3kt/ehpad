@@ -4,9 +4,15 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
 
-type SimplePlayer = {
-  id: string;
-};
+type PoolPlayer =
+  | {
+      kind: "USER";
+      id: string;
+    }
+  | {
+      kind: "TEMP";
+      id: string;
+    };
 
 function shuffle<T>(items: T[]) {
   const arr = [...items];
@@ -42,9 +48,10 @@ export async function generateMix() {
     redirect("/dashboard");
   }
 
-  const players = await db.user.findMany({
+  const users = await db.user.findMany({
     where: {
       status: "ACTIVE",
+      registrationStatus: "APPROVED",
       isAvailableForMix: true,
     },
     select: {
@@ -55,14 +62,37 @@ export async function generateMix() {
     },
   });
 
-  const teamSizes = getTeamSizes(players.length);
+  const tempPlayers = await db.tempPlayer.findMany({
+    where: {
+      isAvailableForMix: true,
+    },
+    select: {
+      id: true,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  const poolPlayers: PoolPlayer[] = [
+    ...users.map((player) => ({
+      kind: "USER" as const,
+      id: player.id,
+    })),
+    ...tempPlayers.map((player) => ({
+      kind: "TEMP" as const,
+      id: player.id,
+    })),
+  ];
+
+  const teamSizes = getTeamSizes(poolPlayers.length);
 
   if (!teamSizes) {
     redirect("/admin/mix?error=invalid_count");
   }
 
   try {
-    const shuffledPlayers = shuffle<SimplePlayer>(players);
+    const shuffledPlayers = shuffle(poolPlayers);
 
     const session = await db.mixSession.create({
       data: {
@@ -73,13 +103,14 @@ export async function generateMix() {
       },
     });
 
-    if (shuffledPlayers.length > 0) {
-      await db.mixSessionPlayer.createMany({
-        data: shuffledPlayers.map((player) => ({
+    for (const player of shuffledPlayers) {
+      await db.mixSessionPlayer.create({
+        data: {
           sessionId: session.id,
-          userId: player.id,
+          userId: player.kind === "USER" ? player.id : null,
+          tempPlayerId: player.kind === "TEMP" ? player.id : null,
           status: "WAITING",
-        })),
+        },
       });
     }
 
@@ -96,26 +127,38 @@ export async function generateMix() {
         },
       });
 
-      if (teamPlayers.length > 0) {
-        await db.teamMember.createMany({
-          data: teamPlayers.map((player) => ({
+      for (const player of teamPlayers) {
+        await db.teamMember.create({
+          data: {
             teamId: team.id,
-            userId: player.id,
-          })),
+            userId: player.kind === "USER" ? player.id : null,
+            tempPlayerId: player.kind === "TEMP" ? player.id : null,
+          },
         });
 
-        await db.mixSessionPlayer.updateMany({
-          where: {
-            sessionId: session.id,
-            userId: {
-              in: teamPlayers.map((player) => player.id),
+        if (player.kind === "USER") {
+          await db.mixSessionPlayer.updateMany({
+            where: {
+              sessionId: session.id,
+              userId: player.id,
             },
-          },
-          data: {
-            status: "ASSIGNED",
-            assignedAt: new Date(),
-          },
-        });
+            data: {
+              status: "ASSIGNED",
+              assignedAt: new Date(),
+            },
+          });
+        } else {
+          await db.mixSessionPlayer.updateMany({
+            where: {
+              sessionId: session.id,
+              tempPlayerId: player.id,
+            },
+            data: {
+              status: "ASSIGNED",
+              assignedAt: new Date(),
+            },
+          });
+        }
       }
 
       cursor += teamSize;
