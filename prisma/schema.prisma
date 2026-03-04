@@ -19,6 +19,12 @@ enum UserStatus {
   BANNED
 }
 
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum GamePlatform {
   PC
   PS5
@@ -177,6 +183,12 @@ model User {
   role         UserRole   @default(PLAYER)
   status       UserStatus @default(ACTIVE)
 
+  registrationStatus RegistrationStatus @default(APPROVED)
+  approvedAt         DateTime?
+  approvedById       String?
+  rejectedAt         DateTime?
+  rejectedById       String?
+
   warzoneUsername String
   activisionId    String?
   platform        GamePlatform?
@@ -205,6 +217,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  approvedBy    User?  @relation("ApprovedUsers", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedUsers User[] @relation("ApprovedUsers")
+
+  rejectedBy    User?  @relation("RejectedUsers", fields: [rejectedById], references: [id], onDelete: SetNull)
+  rejectedUsers User[] @relation("RejectedUsers")
+
   warningsReceived      Warning[]          @relation("WarningsReceived")
   warningsIssued        Warning[]          @relation("WarningsIssued")
   bansReceived          Ban[]              @relation("BansReceived")
@@ -219,8 +237,12 @@ model User {
   mixSessions           MixSession[]
   contactRequests       ContactRequest[]
 
-  roleChangesReceived   RoleChangeLog[]    @relation("RoleChangesTargetUser")
-  roleChangesIssued     RoleChangeLog[]    @relation("RoleChangesAdminUser")
+  roleChangesReceived RoleChangeLog[] @relation("RoleChangesTargetUser")
+  roleChangesIssued   RoleChangeLog[] @relation("RoleChangesAdminUser")
+
+  @@index([registrationStatus])
+  @@index([approvedById])
+  @@index([rejectedById])
 }
 
 model RulesVersion {
@@ -460,7 +482,7 @@ model TeamMember {
 }
 
 model RoleChangeLog {
-  id           String   @id @default(cuid())
+  id           String @id @default(cuid())
   targetUserId String
   adminUserId  String
 

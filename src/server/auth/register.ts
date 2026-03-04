@@ -49,6 +49,7 @@ export async function registerUser(formData: FormData) {
   try {
     const existingEmail = await db.user.findUnique({
       where: { email: normalizedEmail },
+      select: { id: true },
     });
 
     if (existingEmail) {
@@ -57,6 +58,7 @@ export async function registerUser(formData: FormData) {
 
     const existingUsername = await db.user.findUnique({
       where: { username: normalizedUsername },
+      select: { id: true },
     });
 
     if (existingUsername) {
@@ -66,6 +68,7 @@ export async function registerUser(formData: FormData) {
     const activeRules = await db.rulesVersion.findFirst({
       where: { isActive: true },
       orderBy: { versionNumber: "desc" },
+      select: { id: true },
     });
 
     const passwordHash = await hash(password, 12);
@@ -78,7 +81,8 @@ export async function registerUser(formData: FormData) {
         username: normalizedUsername,
         warzoneUsername: normalizedWarzoneUsername,
         role: "PLAYER",
-        status: "ACTIVE",
+        status: "INACTIVE",
+        registrationStatus: "PENDING",
         acceptedRulesAt: new Date(),
         acceptedRulesVersionId: activeRules?.id,
       },
@@ -88,5 +92,5 @@ export async function registerUser(formData: FormData) {
     redirect("/register?error=server");
   }
 
-  redirect("/login?registered=1");
+  redirect("/approval-pending");
 }
