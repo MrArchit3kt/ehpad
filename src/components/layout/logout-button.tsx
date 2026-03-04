@@ -1,25 +1,24 @@
 "use client";
 
-import { useTransition } from "react";
 import { signOut } from "next-auth/react";
+import { LogOut } from "lucide-react";
 
-export function LogoutButton() {
-  const [isPending, startTransition] = useTransition();
+type LogoutButtonProps = {
+  className?: string;
+};
 
+const DEFAULT_CLASS =
+  "relative inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm font-medium text-white transition hover:border-cyan-400/20 hover:bg-white/[0.05]";
+
+export function LogoutButton({ className }: LogoutButtonProps) {
   return (
     <button
       type="button"
-      onClick={() =>
-        startTransition(async () => {
-          await signOut({
-            callbackUrl: "/login",
-          });
-        })
-      }
-      disabled={isPending}
-      className="neon-button-secondary px-5 py-3 disabled:opacity-70"
+      onClick={() => signOut({ callbackUrl: "/login" })}
+      className={className ?? DEFAULT_CLASS}
     >
-      {isPending ? "Déconnexion..." : "Déconnexion"}
+      <LogOut className="h-4 w-4 text-white/80" />
+      <span>Déconnexion</span>
     </button>
   );
 }
