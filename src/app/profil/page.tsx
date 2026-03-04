@@ -63,6 +63,13 @@ export default async function ProfilePage({
                   platform: true,
                 },
               },
+              tempPlayer: {
+                select: {
+                  id: true,
+                  nickname: true,
+                  note: true,
+                },
+              },
             },
           },
         },
@@ -87,8 +94,8 @@ export default async function ProfilePage({
             Mon profil joueur
           </h2>
           <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-            Configure tes informations de jeu, gère ta présence dans le pool de mix
-            et consulte ta dernière équipe assignée.
+            Configure tes informations de jeu, gère ta présence dans le pool de
+            mix et consulte ta dernière équipe assignée.
           </p>
         </div>
 
@@ -167,28 +174,50 @@ export default async function ProfilePage({
                 </p>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {currentTeam.members.map((member) => (
-                    <div key={member.id} className="neon-card-soft p-4">
-                      <p className="font-semibold text-white">
-                        {member.user.displayName}
-                      </p>
-                      <p className="neon-text-muted mt-1 text-sm">
-                        @{member.user.username}
-                      </p>
-                      <p className="neon-text-muted mt-2 text-sm">
-                        Warzone :{" "}
-                        <span className="text-white">
-                          {member.user.warzoneUsername}
-                        </span>
-                      </p>
-                      <p className="neon-text-muted mt-1 text-sm">
-                        Plateforme :{" "}
-                        <span className="text-white">
-                          {member.user.platform ?? "Non renseignée"}
-                        </span>
-                      </p>
-                    </div>
-                  ))}
+                  {currentTeam.members.map((member) => {
+                    const memberName =
+                      member.user?.displayName ??
+                      member.tempPlayer?.nickname ??
+                      "Joueur inconnu";
+
+                    const memberSecondary =
+                      member.user?.username
+                        ? `@${member.user.username}`
+                        : "Joueur temporaire";
+
+                    const memberWarzone =
+                      member.user?.warzoneUsername ??
+                      member.tempPlayer?.nickname ??
+                      "Non renseigné";
+
+                    const memberPlatform = member.user?.platform ?? "Temporaire";
+
+                    return (
+                      <div key={member.id} className="neon-card-soft p-4">
+                        <p className="font-semibold text-white">{memberName}</p>
+
+                        <p className="neon-text-muted mt-1 text-sm">
+                          {memberSecondary}
+                        </p>
+
+                        <p className="neon-text-muted mt-2 text-sm">
+                          Warzone :{" "}
+                          <span className="text-white">{memberWarzone}</span>
+                        </p>
+
+                        <p className="neon-text-muted mt-1 text-sm">
+                          Plateforme :{" "}
+                          <span className="text-white">{memberPlatform}</span>
+                        </p>
+
+                        {member.tempPlayer?.note ? (
+                          <p className="neon-text-muted mt-2 text-xs">
+                            Note : <span className="text-white">{member.tempPlayer.note}</span>
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             ) : (
