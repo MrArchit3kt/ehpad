@@ -10,6 +10,7 @@ import { liftBan } from "@/server/admin/lift-ban";
 import { resetPlayerPassword } from "@/server/admin/reset-player-password";
 import { toggleEhpadMember } from "@/server/admin/toggle-ehpad-member";
 import { toggleUserRole } from "@/server/admin/toggle-user-role";
+import { AdminPlayersRealtime } from "@/components/admin/admin-players-realtime";
 
 function formatDate(value: Date | null) {
   if (!value) return "Jamais";
@@ -70,6 +71,19 @@ function getWarningTypeLabel(type: string) {
       return "Autre";
     default:
       return type;
+  }
+}
+
+function getRoleLabel(role: string) {
+  switch (role) {
+    case "SUPER_ADMIN":
+      return "Super Admin";
+    case "ADMIN":
+      return "Admin";
+    case "PLAYER":
+      return "Player";
+    default:
+      return role;
   }
 }
 
@@ -157,6 +171,24 @@ export default async function AdminPlayersPage({
           revokedReason: true,
         },
       },
+      roleChangesReceived: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          previousRole: true,
+          nextRole: true,
+          createdAt: true,
+          adminUser: {
+            select: {
+              id: true,
+              displayName: true,
+              username: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -185,6 +217,7 @@ export default async function AdminPlayersPage({
       activeWarnings,
       shouldAlert,
       warnings: player.warningsReceived,
+      roleHistory: player.roleChangesReceived,
     };
   });
 
@@ -193,6 +226,8 @@ export default async function AdminPlayersPage({
 
   return (
     <SiteShell>
+      <AdminPlayersRealtime channel="players" />
+
       <div className="grid gap-6">
         <div className="neon-card p-6 md:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -204,7 +239,8 @@ export default async function AdminPlayersPage({
                 Suivi des joueurs
               </h2>
               <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-                Vue admin de l’activité, de l’inactivité, des membres EHPAD et de la modération des joueurs.
+                Vue admin de l’activité, de l’inactivité, des membres EHPAD et de
+                la modération des joueurs.
               </p>
             </div>
 
@@ -256,7 +292,8 @@ export default async function AdminPlayersPage({
         {isBanned ? (
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-rose-400">
-              Le joueur a atteint 5 avertissements actifs du même type et a été banni automatiquement.
+              Le joueur a atteint 5 avertissements actifs du même type et a été
+              banni automatiquement.
             </p>
           </div>
         ) : null}
@@ -312,8 +349,9 @@ export default async function AdminPlayersPage({
         {alertCount > 0 ? (
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-amber-300">
-              Attention : {alertCount} joueur{alertCount > 1 ? "s" : ""} n’a / n’ont pas
-              été vu{alertCount > 1 ? "s" : ""} depuis au moins 10 jours.
+              Attention : {alertCount} joueur{alertCount > 1 ? "s" : ""} n’a /
+              n’ont pas été vu{alertCount > 1 ? "s" : ""} depuis au moins 10
+              jours.
             </p>
           </div>
         ) : null}
@@ -322,100 +360,153 @@ export default async function AdminPlayersPage({
           {rows.map((player) => (
             <details
               key={player.id}
-              className="neon-card overflow-hidden p-0 group"
+              className="group neon-card overflow-hidden p-0"
             >
-              <summary className="list-none cursor-pointer p-5 md:p-6">
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-bold text-white md:text-xl">
-                          {player.displayName}
-                        </h3>
+              <summary className="list-none cursor-pointer p-4 md:p-5">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-base font-bold text-white md:text-lg">
+                        {player.displayName}
+                      </h3>
 
-                        <span className="neon-badge">@{player.username}</span>
+                      <span className="neon-badge">@{player.username}</span>
 
-                        <span className={getRoleBadgeClass(player.role)}>
-                          {player.role}
+                      <span className={getRoleBadgeClass(player.role)}>
+                        {getRoleLabel(player.role)}
+                      </span>
+
+                      <span className={getStatusBadgeClass(player.status)}>
+                        {player.status}
+                      </span>
+
+                      <span
+                        className={
+                          player.isEhpadMember
+                            ? "rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300"
+                            : "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70"
+                        }
+                      >
+                        {player.isEhpadMember ? "Membre EHPAD" : "Externe"}
+                      </span>
+
+                      {player.shouldAlert ? (
+                        <span className="rounded-full border border-amber-400/20 bg-amber-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300">
+                          Inactif 10j+
                         </span>
+                      ) : null}
+                    </div>
 
-                        <span className={getStatusBadgeClass(player.status)}>
-                          {player.status}
-                        </span>
+                    <p className="neon-text-muted mt-2 truncate text-xs md:text-sm">
+                      {player.email}
+                    </p>
+                  </div>
 
-                        <span
-                          className={
-                            player.isEhpadMember
-                              ? "rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300"
-                              : "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white/70"
-                          }
-                        >
-                          {player.isEhpadMember ? "Membre EHPAD" : "Externe"}
-                        </span>
-
-                        {player.shouldAlert ? (
-                          <span className="rounded-full border border-amber-400/20 bg-amber-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-amber-300">
-                            Inactif 10j+
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <p className="neon-text-muted mt-3 text-sm truncate">
-                        {player.email}
+                  <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
+                        Dernière co
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-white">
+                        {formatDate(player.lastSeenAt)}
                       </p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="neon-card-soft min-w-[135px] p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
-                          Dernière connexion
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+                        Inactivité
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-white">
+                        {player.inactiveDays === null
+                          ? "Jamais vu"
+                          : `${player.inactiveDays} jour${
+                              player.inactiveDays > 1 ? "s" : ""
+                            }`}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                        Warnings
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-white">
+                        {player.activeWarnings} / {player.totalWarnings}
+                      </p>
+                    </div>
+
+                    <div className="flex min-w-[110px] items-center justify-between rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                          Détails
                         </p>
-                        <p className="mt-1.5 text-sm font-semibold text-white">
-                          {formatDate(player.lastSeenAt)}
+                        <p className="mt-1 text-xs font-semibold text-white">
+                          Ouvrir
                         </p>
                       </div>
 
-                      <div className="neon-card-soft min-w-[135px] p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-                          Inactivité
-                        </p>
-                        <p className="mt-1.5 text-sm font-semibold text-white">
-                          {player.inactiveDays === null
-                            ? "Jamais vu"
-                            : `${player.inactiveDays} jour${player.inactiveDays > 1 ? "s" : ""}`}
-                        </p>
-                      </div>
-
-                      <div className="neon-card-soft min-w-[135px] p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                          Warnings
-                        </p>
-                        <p className="mt-1.5 text-sm font-semibold text-white">
-                          {player.activeWarnings} actif{player.activeWarnings > 1 ? "s" : ""} / {player.totalWarnings}
-                        </p>
-                      </div>
-
-                      <div className="neon-card-soft min-w-[135px] p-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                            Détails
-                          </p>
-                          <p className="mt-1.5 text-sm font-semibold text-white">
-                            Ouvrir
-                          </p>
-                        </div>
-
-                        <span className="text-white/70 text-lg transition-transform duration-200 group-open:rotate-180">
-                          ▼
-                        </span>
-                      </div>
+                      <span className="text-sm text-white/70 transition-transform duration-200 group-open:rotate-180">
+                        ▼
+                      </span>
                     </div>
                   </div>
                 </div>
               </summary>
 
-              <div className="border-t border-white/8 px-5 pb-5 pt-5 md:px-6 md:pb-6">
+              <div className="border-t border-white/8 px-4 pb-4 pt-4 md:px-5 md:pb-5">
                 <div className="grid gap-4">
+                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                        Email
+                      </p>
+                      <p className="mt-1 break-all text-sm text-white">
+                        {player.email}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                        Entrée
+                      </p>
+                      <p className="mt-1 text-sm text-white">
+                        {formatDate(player.createdAt)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
+                        Dernière connexion
+                      </p>
+                      <p className="mt-1 text-sm text-white">
+                        {formatDate(player.lastSeenAt)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+                        Inactivité
+                      </p>
+                      <p className="mt-1 text-sm text-white">
+                        {player.inactiveDays === null
+                          ? "Jamais vu"
+                          : `${player.inactiveDays} jour${
+                              player.inactiveDays > 1 ? "s" : ""
+                            }`}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                        Warnings
+                      </p>
+                      <p className="mt-1 text-sm text-white">
+                        {player.activeWarnings} actif
+                        {player.activeWarnings > 1 ? "s" : ""} /{" "}
+                        {player.totalWarnings}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="grid gap-4 xl:grid-cols-4">
                     <div className="rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.03] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
@@ -425,8 +516,11 @@ export default async function AdminPlayersPage({
                       <p className="neon-text-muted mt-2 text-sm leading-6">
                         Ce joueur est actuellement{" "}
                         <span className="font-semibold text-white">
-                          {player.isEhpadMember ? "dans la team EHPAD" : "hors team EHPAD"}
-                        </span>.
+                          {player.isEhpadMember
+                            ? "dans la team EHPAD"
+                            : "hors team EHPAD"}
+                        </span>
+                        .
                       </p>
 
                       <form action={toggleEhpadMember} className="mt-3">
@@ -440,7 +534,9 @@ export default async function AdminPlayersPage({
                         <button
                           type="submit"
                           className={`w-full px-5 py-3 ${
-                            player.isEhpadMember ? "neon-button-secondary" : "neon-button"
+                            player.isEhpadMember
+                              ? "neon-button-secondary"
+                              : "neon-button"
                           }`}
                         >
                           {player.isEhpadMember
@@ -457,7 +553,9 @@ export default async function AdminPlayersPage({
 
                       <p className="neon-text-muted mt-2 text-sm leading-6">
                         Rôle actuel :{" "}
-                        <span className="font-semibold text-white">{player.role}</span>
+                        <span className="font-semibold text-white">
+                          {getRoleLabel(player.role)}
+                        </span>
                       </p>
 
                       {player.role === "SUPER_ADMIN" ? (
@@ -538,7 +636,9 @@ export default async function AdminPlayersPage({
                           <option value="ABSENCE">Absence</option>
                           <option value="AFK">AFK</option>
                           <option value="INSULT">Insulte</option>
-                          <option value="CHEATING_SUSPECT">Suspicion de cheat</option>
+                          <option value="CHEATING_SUSPECT">
+                            Suspicion de cheat
+                          </option>
                           <option value="TEAM_REFUSAL">Refus d’équipe</option>
                           <option value="SPAM">Spam</option>
                           <option value="OTHER">Autre</option>
@@ -552,11 +652,68 @@ export default async function AdminPlayersPage({
                           className="w-full px-4 py-3"
                         />
 
-                        <button type="submit" className="neon-button w-full px-5 py-3">
+                        <button
+                          type="submit"
+                          className="neon-button w-full px-5 py-3"
+                        >
                           Avertir
                         </button>
                       </form>
                     </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                        Historique des changements de rôle
+                      </p>
+                      <span className="neon-badge">
+                        {player.roleHistory.length} total
+                      </span>
+                    </div>
+
+                    {player.roleHistory.length === 0 ? (
+                      <p className="neon-text-muted mt-4 text-sm">
+                        Aucun changement de rôle enregistré pour ce joueur.
+                      </p>
+                    ) : (
+                      <div className="mt-4 grid gap-3">
+                        {player.roleHistory.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="rounded-2xl border border-white/8 bg-black/20 p-4"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={getRoleBadgeClass(entry.previousRole)}
+                              >
+                                {getRoleLabel(entry.previousRole)}
+                              </span>
+
+                              <span className="text-white/50">→</span>
+
+                              <span className={getRoleBadgeClass(entry.nextRole)}>
+                                {getRoleLabel(entry.nextRole)}
+                              </span>
+
+                              <span className="text-xs text-white/50">
+                                {formatDate(entry.createdAt)}
+                              </span>
+                            </div>
+
+                            <p className="mt-3 text-sm text-white">
+                              Modifié par{" "}
+                              <span className="font-semibold">
+                                {entry.adminUser?.displayName ?? "Admin inconnu"}
+                              </span>
+                              {entry.adminUser?.username
+                                ? ` (@${entry.adminUser.username})`
+                                : ""}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {player.status === "BANNED" ? (
@@ -590,7 +747,9 @@ export default async function AdminPlayersPage({
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                         Historique des avertissements
                       </p>
-                      <span className="neon-badge">{player.totalWarnings} total</span>
+                      <span className="neon-badge">
+                        {player.totalWarnings} total
+                      </span>
                     </div>
 
                     {player.warnings.length === 0 ? (
@@ -624,13 +783,17 @@ export default async function AdminPlayersPage({
                               </span>
                             </div>
 
-                            <p className="mt-3 text-sm text-white">{warning.message}</p>
+                            <p className="mt-3 text-sm text-white">
+                              {warning.message}
+                            </p>
 
                             {warning.status === "REVOKED" ? (
                               <div className="mt-3 text-xs text-emerald-300/80">
                                 <p>Révoqué le : {formatDate(warning.revokedAt)}</p>
                                 {warning.revokedReason ? (
-                                  <p className="mt-1">Motif : {warning.revokedReason}</p>
+                                  <p className="mt-1">
+                                    Motif : {warning.revokedReason}
+                                  </p>
                                 ) : null}
                               </div>
                             ) : null}

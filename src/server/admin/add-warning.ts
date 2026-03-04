@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
+import { publishAdminEvent } from "@/server/admin/admin-live-events";
 
 const WARNING_LIMIT_PER_TYPE = 5;
 
@@ -35,11 +36,11 @@ export async function addWarning(formData: FormData) {
   const message = String(formData.get("message") ?? "").trim();
 
   if (!targetUserId || !rawType || !message) {
-    redirect("/admin/players?error=server");
+    redirect("/admin/players?error=validation");
   }
 
   if (!isAllowedWarningType(rawType)) {
-    redirect("/admin/players?error=server");
+    redirect("/admin/players?error=validation");
   }
 
   const targetUser = await db.user.findUnique({
@@ -51,7 +52,7 @@ export async function addWarning(formData: FormData) {
   });
 
   if (!targetUser) {
-    redirect("/admin/players?error=server");
+    redirect("/admin/players?error=player_not_found");
   }
 
   try {
@@ -110,8 +111,11 @@ export async function addWarning(formData: FormData) {
         },
       });
 
+      publishAdminEvent("players");
       redirect("/admin/players?warned=1&banned=1");
     }
+
+    publishAdminEvent("players");
   } catch (error) {
     console.error("ADD_WARNING_ERROR", error);
     redirect("/admin/players?error=server");

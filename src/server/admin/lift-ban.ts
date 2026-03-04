@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
+import { publishAdminEvent } from "@/server/admin/admin-live-events";
 
 export async function liftBan(formData: FormData) {
   const admin = await requireAdmin();
@@ -15,10 +16,21 @@ export async function liftBan(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim();
 
   if (!userId) {
-    redirect("/admin/players?error=server");
+    redirect("/admin/players?error=validation");
   }
 
   try {
+    const targetUser = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!targetUser) {
+      redirect("/admin/players?error=player_not_found");
+    }
+
     const activeBan = await db.ban.findFirst({
       where: {
         targetUserId: userId,
@@ -52,6 +64,8 @@ export async function liftBan(formData: FormData) {
         banTriggerType: null,
       },
     });
+
+    publishAdminEvent("players");
   } catch (error) {
     console.error("LIFT_BAN_ERROR", error);
     redirect("/admin/players?error=server");

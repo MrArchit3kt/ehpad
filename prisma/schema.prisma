@@ -218,6 +218,9 @@ model User {
   teamMemberships       TeamMember[]
   mixSessions           MixSession[]
   contactRequests       ContactRequest[]
+
+  roleChangesReceived   RoleChangeLog[]    @relation("RoleChangesTargetUser")
+  roleChangesIssued     RoleChangeLog[]    @relation("RoleChangesAdminUser")
 }
 
 model RulesVersion {
@@ -454,4 +457,22 @@ model TeamMember {
   @@unique([teamId, userId])
   @@index([teamId])
   @@index([userId])
+}
+
+model RoleChangeLog {
+  id           String   @id @default(cuid())
+  targetUserId String
+  adminUserId  String
+
+  previousRole UserRole
+  nextRole     UserRole
+
+  createdAt DateTime @default(now())
+
+  targetUser User @relation("RoleChangesTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  adminUser  User @relation("RoleChangesAdminUser", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId, createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([createdAt])
 }

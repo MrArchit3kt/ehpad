@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
+import { publishAdminEvent } from "@/server/admin/admin-live-events";
 
 export async function toggleEhpadMember(formData: FormData) {
   const admin = await requireAdmin();
@@ -38,6 +39,8 @@ export async function toggleEhpadMember(formData: FormData) {
         isEhpadMember: nextValue,
       },
     });
+
+    publishAdminEvent("players");
   } catch (error) {
     console.error("TOGGLE_EHPAD_MEMBER_ERROR", error);
     redirect("/admin/players?error=server");

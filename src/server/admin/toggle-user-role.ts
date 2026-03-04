@@ -3,16 +3,13 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
+import { publishAdminEvent } from "@/server/admin/admin-live-events";
 
 export async function toggleUserRole(formData: FormData) {
   const admin = await requireAdmin();
 
   if (!admin) {
     redirect("/dashboard");
-  }
-
-  if (admin.role !== "ADMIN") {
-    redirect("/admin/players?error=forbidden");
   }
 
   const userId = String(formData.get("userId") ?? "").trim();
@@ -23,6 +20,10 @@ export async function toggleUserRole(formData: FormData) {
 
   if (userId === admin.id) {
     redirect("/admin/players?error=self_role");
+  }
+
+  if (admin.role !== "SUPER_ADMIN") {
+    redirect("/admin/players?error=forbidden");
   }
 
   try {
@@ -44,12 +45,24 @@ export async function toggleUserRole(formData: FormData) {
 
     const nextRole = targetUser.role === "ADMIN" ? "PLAYER" : "ADMIN";
 
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        role: nextRole,
-      },
-    });
+    await db.$transaction([
+      db.user.update({
+        where: { id: targetUser.id },
+        data: {
+          role: nextRole,
+        },
+      }),
+      db.roleChangeLog.create({
+        data: {
+          targetUserId: targetUser.id,
+          adminUserId: admin.id,
+          previousRole: targetUser.role,
+          nextRole,
+        },
+      }),
+    ]);
+
+    await Promise.resolve(publishAdminEvent("players"));
   } catch (error) {
     console.error("TOGGLE_USER_ROLE_ERROR", error);
     redirect("/admin/players?error=server");
