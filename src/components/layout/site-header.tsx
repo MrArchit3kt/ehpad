@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Bell, Share2, UserCircle2, LogOut } from "lucide-react";
+import { Bell, Share2, UserCircle2 } from "lucide-react";
 import { getSessionUser } from "@/server/auth/session";
-import { logoutUser } from "@/server/auth/logout";
 import { db } from "@/lib/prisma";
+import { LogoutButton } from "@/components/layout/logout-button";
 
 const ACTION_CLASS =
   "relative inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm font-medium text-white transition hover:border-cyan-400/20 hover:bg-white/[0.05]";
@@ -79,12 +79,7 @@ export async function SiteHeader() {
                 </div>
               </Link>
 
-              <form action={logoutUser}>
-                <button type="submit" className={ACTION_CLASS}>
-                  <LogOut className="h-4 w-4 text-white/80" />
-                  <span>Déconnexion</span>
-                </button>
-              </form>
+              <LogoutButton className={ACTION_CLASS} />
             </>
           ) : (
             <Link href="/login" className={ACTION_CLASS}>
