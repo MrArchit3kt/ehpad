@@ -257,38 +257,38 @@ export default async function AdminMixPage({
 
   return (
     <SiteShell>
-      <div className="grid gap-6">
-        <div className="neon-card p-6 md:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+      <div className="grid gap-5">
+        <div className="neon-card p-5 md:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
             Admin Mix
           </p>
-          <h2 className="neon-title neon-gradient-text mt-3 text-2xl font-black md:text-3xl">
+          <h2 className="neon-title neon-gradient-text mt-2 text-2xl font-black md:text-3xl">
             Mélangeur d’équipes
           </h2>
-          <p className="neon-text-muted mt-4 max-w-3xl leading-7">
+          <p className="neon-text-muted mt-3 max-w-3xl text-sm leading-6 md:text-base">
             Le système répartit les joueurs du pool en équipes de 4 et 3.
             Aucun remplaçant, aucun joueur laissé de côté.
           </p>
         </div>
 
-        <div className="neon-card p-6 md:p-8">
-          <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+        <div className="neon-card p-5 md:p-6">
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.95fr] xl:items-start">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                 Admin autorisé à générer
               </p>
-              <h3 className="mt-2 text-xl font-bold text-white">
+              <h3 className="mt-2 text-lg font-bold text-white md:text-xl">
                 Contrôle du générateur
               </h3>
-              <p className="neon-text-muted mt-2 text-sm">
+              <p className="neon-text-muted mt-2 text-sm leading-6">
                 Un seul admin peut générer les équipes à la fois. Tous les admins ont les mêmes droits.
               </p>
 
-              <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.02] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+              <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
                   Admin actuellement sélectionné
                 </p>
-                <p className="mt-2 text-sm text-white">
+                <p className="mt-1.5 text-sm text-white">
                   {mixLock?.selectedAdmin
                     ? `${mixLock.selectedAdmin.displayName} (@${mixLock.selectedAdmin.username})`
                     : "Aucun admin sélectionné"}
@@ -296,7 +296,7 @@ export default async function AdminMixPage({
               </div>
             </div>
 
-            <form action={setMixGenerator} className="grid gap-3">
+            <form action={setMixGenerator} className="grid gap-2.5">
               <select
                 name="selectedAdminId"
                 defaultValue={mixLock?.selectedAdminId ?? ""}
@@ -317,21 +317,21 @@ export default async function AdminMixPage({
           </div>
         </div>
 
-        <div className="neon-card p-6 md:p-8">
-          <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
+        <div className="neon-card p-5 md:p-6">
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.95fr] xl:items-start">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                 Ajouter un joueur temporaire
               </p>
-              <h3 className="mt-2 text-xl font-bold text-white">
+              <h3 className="mt-2 text-lg font-bold text-white md:text-xl">
                 Joueur invité sans compte
               </h3>
-              <p className="neon-text-muted mt-2 text-sm">
+              <p className="neon-text-muted mt-2 text-sm leading-6">
                 Crée un joueur temporaire avec seulement un pseudo pour l’ajouter immédiatement au pool.
               </p>
             </div>
 
-            <form action={createTempPlayer} className="grid gap-3">
+            <form action={createTempPlayer} className="grid gap-2.5">
               <input
                 name="nickname"
                 type="text"
@@ -352,35 +352,36 @@ export default async function AdminMixPage({
           </div>
         </div>
 
-        <div className="neon-card p-6 md:p-8">
+        <div className="neon-card p-5 md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                 Joueurs disponibles
               </p>
-              <h3 className="mt-2 text-2xl font-bold text-white">
-                {totalPoolCount} joueur{totalPoolCount > 1 ? "s" : ""} prêt{totalPoolCount > 1 ? "s" : ""}
+              <h3 className="mt-2 text-xl font-bold text-white md:text-2xl">
+                {totalPoolCount} joueur{totalPoolCount > 1 ? "s" : ""} prêt
+                {totalPoolCount > 1 ? "s" : ""}
               </h3>
               <p className="neon-text-muted mt-2 text-sm">
                 Les joueurs restent dans le pool jusqu’à retrait manuel ou déconnexion.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="neon-card-soft px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="neon-card-soft px-4 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                   Total pool
                 </p>
-                <p className="neon-title neon-gradient-text mt-1 text-xl font-black md:text-2xl">
+                <p className="neon-title neon-gradient-text mt-1 text-lg font-black md:text-xl">
                   {totalPoolCount}
                 </p>
               </div>
 
-              <div className="neon-card-soft px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+              <div className="neon-card-soft px-4 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-300/75">
                   Répartition
                 </p>
-                <p className="mt-1 text-xl font-black text-white md:text-2xl">
+                <p className="mt-1 text-lg font-black text-white md:text-xl">
                   {poolDistribution}
                 </p>
               </div>
@@ -409,7 +410,9 @@ export default async function AdminMixPage({
                 ? ` (@${mixLock.selectedAdmin.username})`
                 : ""}
               .
-              {!canCurrentAdminGenerate ? " Tu ne peux pas générer tant que cette sélection est active." : " Tu peux générer les équipes."}
+              {!canCurrentAdminGenerate
+                ? " Tu ne peux pas générer tant que cette sélection est active."
+                : " Tu peux générer les équipes."}
             </p>
           ) : (
             <p className="mt-4 text-sm text-amber-300">
@@ -418,42 +421,42 @@ export default async function AdminMixPage({
           )}
 
           {errorMessage ? (
-            <p className="mt-5 text-sm font-medium text-rose-400">{errorMessage}</p>
+            <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p>
           ) : null}
 
           {isSuccess ? (
-            <p className="mt-5 text-sm font-medium text-emerald-400">
+            <p className="mt-4 text-sm font-medium text-emerald-400">
               Équipes générées avec succès.
             </p>
           ) : null}
 
           {isRemoved ? (
-            <p className="mt-5 text-sm font-medium text-amber-300">
+            <p className="mt-4 text-sm font-medium text-amber-300">
               Joueur retiré du pool avec succès.
             </p>
           ) : null}
 
           {isAdded ? (
-            <p className="mt-5 text-sm font-medium text-emerald-300">
+            <p className="mt-4 text-sm font-medium text-emerald-300">
               Joueur ajouté au pool avec succès.
             </p>
           ) : null}
 
           {isLockSet ? (
-            <p className="mt-5 text-sm font-medium text-cyan-300">
+            <p className="mt-4 text-sm font-medium text-cyan-300">
               Admin autorisé à générer mis à jour avec succès.
             </p>
           ) : null}
 
           {isLockCleared ? (
-            <p className="mt-5 text-sm font-medium text-amber-300">
+            <p className="mt-4 text-sm font-medium text-amber-300">
               Sélection de l’admin générateur retirée.
             </p>
           ) : null}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {totalPoolCount === 0 ? (
-              <div className="neon-card-soft p-5">
+              <div className="neon-card-soft p-4">
                 <p className="neon-text-muted text-sm">
                   Aucun joueur disponible pour le moment.
                 </p>
@@ -461,29 +464,29 @@ export default async function AdminMixPage({
             ) : (
               <>
                 {availableUsers.map((player) => (
-                  <div key={`user-${player.id}`} className="neon-card-soft p-4">
-                    <h4 className="text-sm font-bold text-white md:text-base">
+                  <div key={`user-${player.id}`} className="neon-card-soft p-3">
+                    <h4 className="truncate text-sm font-bold text-white">
                       {player.displayName}
                     </h4>
-                    <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                    <p className="neon-text-muted mt-1 truncate text-[11px]">
                       @{player.username}
                     </p>
-                    <p className="neon-text-muted mt-2 text-xs md:text-sm">
+                    <p className="neon-text-muted mt-2 truncate text-[11px]">
                       Warzone : <span className="text-white">{player.warzoneUsername}</span>
                     </p>
-                    <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                    <p className="neon-text-muted mt-1 truncate text-[11px]">
                       Plateforme :{" "}
                       <span className="text-white">
                         {player.platform ?? "Non renseignée"}
                       </span>
                     </p>
 
-                    <div className="mt-3">
+                    <div className="mt-2.5">
                       <form action={removePlayerFromPool}>
                         <input type="hidden" name="userId" value={player.id} />
                         <button
                           type="submit"
-                          className="neon-button-secondary w-full px-4 py-2.5 text-sm"
+                          className="neon-button-secondary w-full px-3 py-2 text-xs"
                         >
                           Retirer du pool
                         </button>
@@ -493,30 +496,30 @@ export default async function AdminMixPage({
                 ))}
 
                 {availableTempPlayers.map((player) => (
-                  <div key={`temp-${player.id}`} className="neon-card-soft p-4">
+                  <div key={`temp-${player.id}`} className="neon-card-soft p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-bold text-white md:text-base">
+                      <h4 className="truncate text-sm font-bold text-white">
                         {player.nickname}
                       </h4>
                       <span className="neon-badge text-[10px]">INVITÉ</span>
                     </div>
 
-                    <p className="neon-text-muted mt-2 text-xs md:text-sm">
+                    <p className="neon-text-muted mt-2 text-[11px]">
                       Joueur temporaire sans compte
                     </p>
 
                     {player.note ? (
-                      <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                      <p className="neon-text-muted mt-1 truncate text-[11px]">
                         Note : <span className="text-white">{player.note}</span>
                       </p>
                     ) : null}
 
-                    <div className="mt-3">
+                    <div className="mt-2.5">
                       <form action={removePlayerFromPool}>
                         <input type="hidden" name="tempPlayerId" value={player.id} />
                         <button
                           type="submit"
-                          className="neon-button-secondary w-full px-4 py-2.5 text-sm"
+                          className="neon-button-secondary w-full px-3 py-2 text-xs"
                         >
                           Retirer du pool
                         </button>
@@ -529,46 +532,46 @@ export default async function AdminMixPage({
           </div>
         </div>
 
-        <div className="neon-card p-6 md:p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+        <div className="neon-card p-5 md:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
             Ajouter un joueur existant
           </p>
-          <h3 className="mt-2 text-xl font-bold text-white">
+          <h3 className="mt-2 text-lg font-bold text-white md:text-xl">
             Ajouter un joueur inscrit au pool
           </h3>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {poolCandidates.length === 0 ? (
-              <div className="neon-card-soft p-5">
+              <div className="neon-card-soft p-4">
                 <p className="neon-text-muted text-sm">
                   Aucun joueur éligible à ajouter pour le moment.
                 </p>
               </div>
             ) : (
               poolCandidates.map((player) => (
-                <div key={player.id} className="neon-card-soft p-4">
-                  <h4 className="text-sm font-bold text-white md:text-base">
+                <div key={player.id} className="neon-card-soft p-3">
+                  <h4 className="truncate text-sm font-bold text-white">
                     {player.displayName}
                   </h4>
-                  <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                  <p className="neon-text-muted mt-1 truncate text-[11px]">
                     @{player.username}
                   </p>
-                  <p className="neon-text-muted mt-2 text-xs md:text-sm">
+                  <p className="neon-text-muted mt-2 truncate text-[11px]">
                     Warzone : <span className="text-white">{player.warzoneUsername}</span>
                   </p>
-                  <p className="neon-text-muted mt-1 text-xs md:text-sm">
+                  <p className="neon-text-muted mt-1 truncate text-[11px]">
                     Plateforme :{" "}
                     <span className="text-white">
                       {player.platform ?? "Non renseignée"}
                     </span>
                   </p>
 
-                  <div className="mt-3">
+                  <div className="mt-2.5">
                     <form action={addPlayerToPool}>
                       <input type="hidden" name="userId" value={player.id} />
                       <button
                         type="submit"
-                        className="neon-button w-full px-4 py-2.5 text-sm"
+                        className="neon-button w-full px-3 py-2 text-xs"
                       >
                         Ajouter au pool
                       </button>
@@ -581,13 +584,13 @@ export default async function AdminMixPage({
         </div>
 
         {latestSession ? (
-          <div className="neon-card p-6 md:p-8">
+          <div className="neon-card p-5 md:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
                   Dernier mix généré
                 </p>
-                <h3 className="mt-2 text-xl font-bold text-white md:text-2xl">
+                <h3 className="mt-2 text-lg font-bold text-white md:text-2xl">
                   Session {latestSession.id.slice(-6).toUpperCase()}
                 </h3>
               </div>
@@ -597,11 +600,11 @@ export default async function AdminMixPage({
               </span>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {latestSession.teams.map((team) => (
-                <div key={team.id} className="neon-card-soft p-4">
+                <div key={team.id} className="neon-card-soft p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-base font-bold text-white">
+                    <h4 className="text-sm font-bold text-white md:text-base">
                       Team {team.teamNumber}
                     </h4>
                     <span className="neon-badge text-[10px]">
@@ -609,7 +612,7 @@ export default async function AdminMixPage({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid gap-2">
+                  <div className="mt-2.5 grid gap-2">
                     {team.members.map((member) => {
                       const label = member.user
                         ? member.user.displayName
@@ -626,10 +629,10 @@ export default async function AdminMixPage({
                       return (
                         <div
                           key={member.id}
-                          className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
+                          className="rounded-xl border border-white/8 bg-white/[0.02] p-2.5"
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-white">
+                            <p className="truncate text-xs font-semibold text-white md:text-sm">
                               {label}
                             </p>
                             {!member.user ? (
@@ -637,10 +640,10 @@ export default async function AdminMixPage({
                             ) : null}
                           </div>
 
-                          <p className="neon-text-muted mt-0.5 text-xs">
+                          <p className="neon-text-muted mt-0.5 truncate text-[11px]">
                             {subLabel}
                           </p>
-                          <p className="neon-text-muted mt-1 text-xs">
+                          <p className="neon-text-muted mt-1 truncate text-[11px]">
                             {warzone}
                           </p>
                         </div>
