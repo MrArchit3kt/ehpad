@@ -5,6 +5,21 @@ import { useState, useTransition } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+function getLoginErrorMessage(error?: string | null) {
+  switch (error) {
+    case "ACCOUNT_PENDING_APPROVAL":
+      return "Ton compte est en attente de validation par un admin.";
+    case "ACCOUNT_REJECTED":
+      return "Ton inscription a été refusée. Contacte un admin si besoin.";
+    case "ACCOUNT_BANNED":
+      return "Ton compte est banni et ne peut pas se connecter.";
+    case "CredentialsSignin":
+      return "Identifiants invalides.";
+    default:
+      return "Identifiants invalides ou compte inaccessible.";
+  }
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,7 +50,7 @@ export function LoginForm() {
       }
 
       if (result.error) {
-        setErrorMessage("Identifiants invalides ou compte inaccessible.");
+        setErrorMessage(getLoginErrorMessage(result.error));
         return;
       }
 
@@ -78,7 +93,7 @@ export function LoginForm() {
 
       {registered ? (
         <p className="text-sm font-medium text-emerald-400">
-          Compte créé. Tu peux maintenant te connecter.
+          Compte créé. Il doit maintenant être validé par un admin avant que tu puisses te connecter.
         </p>
       ) : null}
 

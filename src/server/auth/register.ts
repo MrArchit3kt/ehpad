@@ -7,16 +7,17 @@ import { db } from "@/lib/prisma";
 
 const registerSchema = z
   .object({
-    displayName: z.string().min(2).max(40),
+    displayName: z.string().trim().min(2).max(40),
     username: z
       .string()
+      .trim()
       .min(3)
       .max(24)
       .regex(/^[a-zA-Z0-9_]+$/, "Username invalide"),
-    email: z.string().email(),
+    email: z.string().trim().email(),
     password: z.string().min(6),
     confirmPassword: z.string().min(6),
-    warzoneUsername: z.string().min(2).max(40),
+    warzoneUsername: z.string().trim().min(2).max(40),
     acceptRules: z.literal("on"),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -39,12 +40,10 @@ export async function registerUser(formData: FormData) {
     redirect("/register?error=validation");
   }
 
-  const { displayName, username, email, password, warzoneUsername } = parsed.data;
+  const data = parsed.data;
 
-  const normalizedEmail = email.trim().toLowerCase();
-  const normalizedUsername = username.trim().toLowerCase();
-  const normalizedDisplayName = displayName.trim();
-  const normalizedWarzoneUsername = warzoneUsername.trim();
+  const normalizedEmail = data.email.toLowerCase();
+  const normalizedUsername = data.username.toLowerCase();
 
   try {
     const existingEmail = await db.user.findUnique({
@@ -71,20 +70,20 @@ export async function registerUser(formData: FormData) {
       select: { id: true },
     });
 
-    const passwordHash = await hash(password, 12);
+    const passwordHash = await hash(data.password, 12);
 
     await db.user.create({
       data: {
         email: normalizedEmail,
         passwordHash,
-        displayName: normalizedDisplayName,
+        displayName: data.displayName,
         username: normalizedUsername,
-        warzoneUsername: normalizedWarzoneUsername,
+        warzoneUsername: data.warzoneUsername,
         role: "PLAYER",
         status: "INACTIVE",
         registrationStatus: "PENDING",
         acceptedRulesAt: new Date(),
-        acceptedRulesVersionId: activeRules?.id,
+        acceptedRulesVersionId: activeRules?.id ?? null,
       },
     });
   } catch (error) {

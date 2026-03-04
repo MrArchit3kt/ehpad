@@ -1,86 +1,101 @@
-import type { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import { z } from "zod";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 import { db } from "@/lib/prisma";
 
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-  },
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Mot de passe", type: "password" },
-      },
-      async authorize(rawCredentials) {
-        const parsed = credentialsSchema.safeParse(rawCredentials);
-
-        if (!parsed.success) {
-          return null;
-        }
-
-        const { email, password } = parsed.data;
-
-        const user = await db.user.findUnique({
-          where: { email: email.toLowerCase() },
-        });
-
-        if (!user) {
-          return null;
-        }
-
-        if (user.status === "BANNED") {
-          return null;
-        }
-
-        const isValid = await compare(password, user.passwordHash);
-
-        if (!isValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.displayName,
-          role: user.role,
-          username: user.username,
-          status: user.status,
-        } as any;
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = (user as any).id;
-        token.role = (user as any).role;
-        token.username = (user as any).username;
-        token.status = (user as any).status;
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = String(token.id ?? "");
-        (session.user as any).role = String(token.role ?? "PLAYER");
-        (session.user as any).username = String(token.username ?? "");
-        (session.user as any).status = String(token.status ?? "ACTIVE");
-      }
-
-      return session;
-    },
-  },
+type SessionUser = {
+  id: string;
+  email: string;
+  name: string;
+  username: string;
+  role: string;
+  status: string;
+  registrationStatus: string;
 };
+
+async function resolveSessionUser(): Promise<SessionUser | null> {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user) {
+    return null;
+  }
+
+  const sessionUser = session.user as { id?: string };
+
+  if (!sessionUser.id) {
+    return null;
+  }
+
+  const dbUser = await db.user.findUnique({
+    where: { id: sessionUser.id },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      username: true,
+      role: true,
+      status: true,
+      registrationStatus: true,
+    },
+  });
+
+  if (!dbUser) {
+    return null;
+  }
+
+  if (dbUser.registrationStatus !== "APPROVED") {
+    return null;
+  }
+
+  if (dbUser.status === "BANNED") {
+    return null;
+  }
+
+  return {
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.displayName,
+    username: dbUser.username,
+    role: dbUser.role,
+    status: dbUser.status,
+    registrationStatus: dbUser.registrationStatus,
+  };
+}
+
+export async function getSessionUser() {
+  try {
+    return await resolveSessionUser();
+  } catch (error) {
+    console.error("GET_SESSION_USER_ERROR", error);
+    return null;
+  }
+}
+
+export async function requireAuth() {
+  try {
+    return await resolveSessionUser();
+  } catch (error) {
+    console.error("REQUIRE_AUTH_ERROR", error);
+    return null;
+  }
+}
+
+export async function requireAdmin() {
+  try {
+    const user = await resolveSessionUser();
+
+    if (!user) {
+      return null;
+    }
+
+    const allowed = ["ADMIN", "SUPER_ADMIN"];
+
+    if (!allowed.includes(user.role)) {
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error("REQUIRE_ADMIN_ERROR", error);
+    return null;
+  }
+}

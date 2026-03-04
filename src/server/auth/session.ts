@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { db } from "@/lib/prisma";
@@ -9,6 +10,7 @@ type SessionUser = {
   username: string;
   role: string;
   status: string;
+  registrationStatus: string;
 };
 
 async function resolveSessionUser(): Promise<SessionUser | null> {
@@ -33,6 +35,7 @@ async function resolveSessionUser(): Promise<SessionUser | null> {
       username: true,
       role: true,
       status: true,
+      registrationStatus: true,
     },
   });
 
@@ -47,6 +50,7 @@ async function resolveSessionUser(): Promise<SessionUser | null> {
     username: dbUser.username,
     role: dbUser.role,
     status: dbUser.status,
+    registrationStatus: dbUser.registrationStatus,
   };
 }
 
@@ -61,7 +65,21 @@ export async function getSessionUser() {
 
 export async function requireAuth() {
   try {
-    return await resolveSessionUser();
+    const user = await resolveSessionUser();
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.registrationStatus === "PENDING") {
+      redirect("/approval-pending");
+    }
+
+    if (user.registrationStatus === "REJECTED") {
+      redirect("/approval-rejected");
+    }
+
+    return user;
   } catch (error) {
     console.error("REQUIRE_AUTH_ERROR", error);
     return null;
@@ -70,7 +88,7 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   try {
-    const user = await resolveSessionUser();
+    const user = await requireAuth();
 
     if (!user) {
       return null;

@@ -64,6 +64,11 @@ const adminLinks = [
     icon: Users,
   },
   {
+    href: "/admin/registrations",
+    label: "Inscriptions",
+    icon: Users,
+  },
+  {
     href: "/admin/mix",
     label: "Admin Mix",
     icon: LayoutDashboard,

@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth/session";
 import { LoginForm } from "@/components/forms/login-form";
@@ -7,6 +8,14 @@ export default async function LoginPage() {
   const user = await getSessionUser();
 
   if (user) {
+    if (user.registrationStatus === "PENDING") {
+      redirect("/approval-pending");
+    }
+
+    if (user.registrationStatus === "REJECTED") {
+      redirect("/approval-rejected");
+    }
+
     redirect("/profil");
   }
 
