@@ -28,8 +28,8 @@ export async function SiteHeader() {
         <div className="min-w-0 flex items-center gap-4">
           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
             <Image
-              src="/images/ehpad-logo.png"
-              alt="Logo EHPAD"
+              src="/images/AC2N-logo.png"
+              alt="Logo AC2N"
               fill
               sizes="56px"
               className="object-cover"
@@ -38,7 +38,7 @@ export async function SiteHeader() {
 
           <div className="min-w-0">
             <h1 className="neon-title neon-gradient-text text-xl font-black md:text-2xl">
-              Plateforme de gestion Warzone
+              Plateforme de gestion Gaming
             </h1>
             <p className="neon-text-muted mt-1 truncate text-xs md:text-sm">
               Team privée • mix • modération • événements

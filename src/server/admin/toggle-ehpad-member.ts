@@ -46,5 +46,5 @@ export async function toggleEhpadMember(formData: FormData) {
     redirect("/admin/players?error=server");
   }
 
-  redirect(`/admin/players?ehpad=${nextValue ? "1" : "0"}`);
+  redirect(`/admin/players?AC2N=${nextValue ? "1" : "0"}`);
 }

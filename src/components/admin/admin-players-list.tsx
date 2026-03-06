@@ -27,7 +27,7 @@ type PlayerRow = {
   status: string;
   createdAt: Date;
   lastSeenAt: Date | null;
-  isEhpadMember: boolean;
+  isEhpadMember: boolean; // On garde ce champ DB (renommage DB possible plus tard)
   inactiveDays: number | null;
   totalWarnings: number;
   activeWarnings: number;
@@ -42,7 +42,6 @@ type Props = {
 
 function formatDate(value: Date | null) {
   if (!value) return "Jamais";
-
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -95,11 +94,14 @@ function getStatusBadgeClass(status: string) {
   return "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white/75";
 }
 
-export function AdminPlayersList({ rows, adminRole }: Props) {
+type MembershipFilter = "ALL" | "AC2N" | "EXTERNAL";
+
+export function AdminPlayersList({ rows }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [ehpadFilter, setEhpadFilter] = useState("ALL");
+  const [membershipFilter, setMembershipFilter] =
+    useState<MembershipFilter>("ALL");
   const [openId, setOpenId] = useState<string | null>(null);
 
   const filteredRows = useMemo(() => {
@@ -112,20 +114,18 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
         player.username.toLowerCase().includes(term) ||
         player.email.toLowerCase().includes(term);
 
-      const matchesRole =
-        roleFilter === "ALL" || player.role === roleFilter;
-
+      const matchesRole = roleFilter === "ALL" || player.role === roleFilter;
       const matchesStatus =
         statusFilter === "ALL" || player.status === statusFilter;
 
-      const matchesEhpad =
-        ehpadFilter === "ALL" ||
-        (ehpadFilter === "EHPAD" && player.isEhpadMember) ||
-        (ehpadFilter === "EXTERNAL" && !player.isEhpadMember);
+      const matchesMembership =
+        membershipFilter === "ALL" ||
+        (membershipFilter === "AC2N" && player.isEhpadMember) ||
+        (membershipFilter === "EXTERNAL" && !player.isEhpadMember);
 
-      return matchesSearch && matchesRole && matchesStatus && matchesEhpad;
+      return matchesSearch && matchesRole && matchesStatus && matchesMembership;
     });
-  }, [rows, search, roleFilter, statusFilter, ehpadFilter]);
+  }, [rows, search, roleFilter, statusFilter, membershipFilter]);
 
   return (
     <div className="grid gap-4">
@@ -162,12 +162,14 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
           </select>
 
           <select
-            value={ehpadFilter}
-            onChange={(e) => setEhpadFilter(e.target.value)}
+            value={membershipFilter}
+            onChange={(e) =>
+              setMembershipFilter(e.target.value as MembershipFilter)
+            }
             className="w-full px-4 py-3"
           >
             <option value="ALL">Tous les profils</option>
-            <option value="EHPAD">Membres EHPAD</option>
+            <option value="AC2N">Membres AC2N</option>
             <option value="EXTERNAL">Externes</option>
           </select>
         </div>
@@ -180,25 +182,31 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
 
       {filteredRows.length === 0 ? (
         <div className="neon-card p-5">
-          <p className="text-sm text-white/70">Aucun joueur ne correspond à la recherche.</p>
+          <p className="text-sm text-white/70">
+            Aucun joueur ne correspond à la recherche.
+          </p>
         </div>
       ) : (
         filteredRows.map((player) => {
           const isOpen = openId === player.id;
 
           return (
-            <div key={player.id} className="neon-card p-0 overflow-hidden">
+            <div key={player.id} className="neon-card overflow-hidden p-0">
               <div className="p-4 md:p-5">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-bold text-white md:text-lg">
+                      <h3 className="truncate text-base font-bold text-white md:text-lg">
                         {player.displayName}
                       </h3>
 
                       <span className="neon-badge">@{player.username}</span>
-                      <span className={getRoleBadgeClass(player.role)}>{player.role}</span>
-                      <span className={getStatusBadgeClass(player.status)}>{player.status}</span>
+                      <span className={getRoleBadgeClass(player.role)}>
+                        {player.role}
+                      </span>
+                      <span className={getStatusBadgeClass(player.status)}>
+                        {player.status}
+                      </span>
 
                       <span
                         className={
@@ -207,7 +215,7 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                             : "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white/70"
                         }
                       >
-                        {player.isEhpadMember ? "Membre EHPAD" : "Externe"}
+                        {player.isEhpadMember ? "Membre AC2N" : "Externe"}
                       </span>
 
                       {player.shouldAlert ? (
@@ -217,11 +225,13 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                       ) : null}
                     </div>
 
-                    <p className="mt-2 text-sm text-white/60 truncate">{player.email}</p>
+                    <p className="mt-2 truncate text-sm text-white/60">
+                      {player.email}
+                    </p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="neon-card-soft px-3 py-2 min-w-[120px]">
+                    <div className="neon-card-soft min-w-[120px] px-3 py-2">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300/75">
                         Connexion
                       </p>
@@ -230,7 +240,7 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                       </p>
                     </div>
 
-                    <div className="neon-card-soft px-3 py-2 min-w-[100px]">
+                    <div className="neon-card-soft min-w-[100px] px-3 py-2">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-pink-300/75">
                         Inactivité
                       </p>
@@ -241,7 +251,7 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                       </p>
                     </div>
 
-                    <div className="neon-card-soft px-3 py-2 min-w-[110px]">
+                    <div className="neon-card-soft min-w-[110px] px-3 py-2">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300/75">
                         Warnings
                       </p>
@@ -266,14 +276,17 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                   <div className="grid gap-4 xl:grid-cols-4">
                     <div className="rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.03] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                        Statut team EHPAD
+                        Statut team AC2N
                       </p>
 
-                      <p className="mt-2 text-sm text-white/75 leading-6">
+                      <p className="mt-2 text-sm leading-6 text-white/75">
                         Ce joueur est actuellement{" "}
                         <span className="font-semibold text-white">
-                          {player.isEhpadMember ? "dans la team EHPAD" : "hors team EHPAD"}
-                        </span>.
+                          {player.isEhpadMember
+                            ? "dans la team AC2N"
+                            : "hors team AC2N"}
+                        </span>
+                        .
                       </p>
 
                       <form action={toggleEhpadMember} className="mt-3">
@@ -287,12 +300,14 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                         <button
                           type="submit"
                           className={`w-full px-5 py-3 ${
-                            player.isEhpadMember ? "neon-button-secondary" : "neon-button"
+                            player.isEhpadMember
+                              ? "neon-button-secondary"
+                              : "neon-button"
                           }`}
                         >
                           {player.isEhpadMember
                             ? "Retirer de la team"
-                            : "Activer membre EHPAD"}
+                            : "Activer membre AC2N"}
                         </button>
                       </form>
                     </div>
@@ -302,9 +317,11 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                         Rôle du joueur
                       </p>
 
-                      <p className="mt-2 text-sm text-white/75 leading-6">
+                      <p className="mt-2 text-sm leading-6 text-white/75">
                         Rôle actuel :{" "}
-                        <span className="font-semibold text-white">{player.role}</span>
+                        <span className="font-semibold text-white">
+                          {player.role}
+                        </span>
                       </p>
 
                       {player.role === "SUPER_ADMIN" ? (
@@ -314,7 +331,6 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                       ) : (
                         <form action={toggleUserRole} className="mt-3">
                           <input type="hidden" name="userId" value={player.id} />
-
                           <button
                             type="submit"
                             className={`w-full px-5 py-3 ${
@@ -336,11 +352,14 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                         Réinitialiser le mot de passe
                       </p>
 
-                      <p className="mt-2 text-sm text-white/75 leading-6">
+                      <p className="mt-2 text-sm leading-6 text-white/75">
                         Définit un mot de passe temporaire.
                       </p>
 
-                      <form action={resetPlayerPassword} className="mt-3 grid gap-3">
+                      <form
+                        action={resetPlayerPassword}
+                        className="mt-3 grid gap-3"
+                      >
                         <input type="hidden" name="userId" value={player.id} />
 
                         <input
@@ -378,7 +397,9 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                           <option value="ABSENCE">Absence</option>
                           <option value="AFK">AFK</option>
                           <option value="INSULT">Insulte</option>
-                          <option value="CHEATING_SUSPECT">Suspicion de cheat</option>
+                          <option value="CHEATING_SUSPECT">
+                            Suspicion de cheat
+                          </option>
                           <option value="TEAM_REFUSAL">Refus d’équipe</option>
                           <option value="SPAM">Spam</option>
                           <option value="OTHER">Autre</option>
@@ -392,7 +413,10 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                           className="w-full px-4 py-3"
                         />
 
-                        <button type="submit" className="neon-button w-full px-5 py-3">
+                        <button
+                          type="submit"
+                          className="neon-button w-full px-5 py-3"
+                        >
                           Avertir
                         </button>
                       </form>
@@ -464,13 +488,17 @@ export function AdminPlayersList({ rows, adminRole }: Props) {
                               </span>
                             </div>
 
-                            <p className="mt-3 text-sm text-white">{warning.message}</p>
+                            <p className="mt-3 text-sm text-white">
+                              {warning.message}
+                            </p>
 
                             {warning.status === "REVOKED" ? (
                               <div className="mt-3 text-xs text-emerald-300/80">
                                 <p>Révoqué le : {formatDate(warning.revokedAt)}</p>
                                 {warning.revokedReason ? (
-                                  <p className="mt-1">Motif : {warning.revokedReason}</p>
+                                  <p className="mt-1">
+                                    Motif : {warning.revokedReason}
+                                  </p>
                                 ) : null}
                               </div>
                             ) : null}

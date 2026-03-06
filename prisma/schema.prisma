@@ -136,11 +136,16 @@ enum ContactRequestStatus {
   CLOSED
 }
 
+enum MixGame {
+  WARZONE
+  ROCKET_LEAGUE
+}
+
 model SiteConfig {
   id String @id @default("main")
 
-  siteName           String  @default("EHPAD Squad Manager")
-  homeHeadline       String  @default("EHPAD Warzone Squad")
+  siteName           String  @default("AC2N Squad Manager")
+  homeHeadline       String  @default("AC2N Warzone Squad")
   homeDescription    String  @db.Text
   homeHeroImageUrl   String?
   discordInviteUrl   String?
@@ -201,10 +206,17 @@ model User {
   notes           String?
   isEhpadMember   Boolean       @default(false)
 
-  isOnline          Boolean   @default(false)
-  isAvailableForMix Boolean   @default(false)
-  lastSeenAt        DateTime?
-  lastLoginAt       DateTime?
+  isOnline Boolean @default(false)
+
+  // ancien flag global (garde-le pour compat, puis retire-le quand tout est migré)
+  isAvailableForMix Boolean @default(false)
+
+  // nouveaux flags par jeu
+  isAvailableForWarzoneMix      Boolean @default(false)
+  isAvailableForRocketLeagueMix Boolean @default(false)
+
+  lastSeenAt  DateTime?
+  lastLoginAt DateTime?
 
   acceptedRulesAt        DateTime?
   acceptedRulesVersionId String?
@@ -243,11 +255,14 @@ model User {
   tempPlayersCreated TempPlayer[] @relation("CreatedTempPlayers")
   tempPlayersLinked  TempPlayer[] @relation("LinkedTempPlayers")
 
-  mixGenerationLocks MixGenerationLock[] @relation("MixGenerationLockSelectedAdmin")
+  // relation inverse du lock multi-jeu
+  mixLocksSelected MixGenerationLock[] @relation("MixGenerationLockSelectedUser")
 
   @@index([registrationStatus])
   @@index([approvedById])
   @@index([rejectedById])
+  @@index([isAvailableForWarzoneMix])
+  @@index([isAvailableForRocketLeagueMix])
 }
 
 model TempPlayer {
@@ -449,6 +464,8 @@ model MixSession {
   title  String?
   status MixSessionStatus @default(DRAFT)
 
+  game MixGame @default(WARZONE)
+
   allowTeamsOfThree    Boolean @default(false)
   keepRemainderAsBench Boolean @default(true)
 
@@ -463,6 +480,7 @@ model MixSession {
 
   @@index([status])
   @@index([createdAt])
+  @@index([game])
 }
 
 model MixSessionPlayer {
@@ -537,11 +555,11 @@ model RoleChangeLog {
 }
 
 model MixGenerationLock {
-  id              String   @id @default("main")
-  selectedAdminId String?
-  updatedAt       DateTime @updatedAt
+  game           MixGame  @id
+  selectedUserId String?
+  updatedAt      DateTime @updatedAt
 
-  selectedAdmin User? @relation("MixGenerationLockSelectedAdmin", fields: [selectedAdminId], references: [id], onDelete: SetNull)
+  selectedUser User? @relation("MixGenerationLockSelectedUser", fields: [selectedUserId], references: [id], onDelete: SetNull)
 
-  @@index([selectedAdminId])
+  @@index([selectedUserId])
 }

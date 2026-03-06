@@ -8,7 +8,7 @@ import { addWarning } from "@/server/admin/add-warning";
 import { revokeWarning } from "@/server/admin/revoke-warning";
 import { liftBan } from "@/server/admin/lift-ban";
 import { resetPlayerPassword } from "@/server/admin/reset-player-password";
-import { toggleEhpadMember } from "@/server/admin/toggle-ehpad-member";
+import { toggleAC2NMember } from "@/server/admin/toggle-ehpad-member";
 import { toggleUserRole } from "@/server/admin/toggle-user-role";
 import { deletePlayer } from "@/server/admin/delete-player";
 import { AdminPlayersRealtime } from "@/components/admin/admin-players-realtime";
@@ -125,7 +125,7 @@ export default async function AdminPlayersPage({
     revoked?: string;
     unbanned?: string;
     password_reset?: string;
-    ehpad?: string;
+    AC2N?: string;
     role_updated?: string;
     deleted?: string;
     q?: string;
@@ -146,8 +146,8 @@ export default async function AdminPlayersPage({
   const isRevoked = sp.revoked === "1";
   const isUnbanned = sp.unbanned === "1";
   const isPasswordReset = sp.password_reset === "1";
-  const isEhpadEnabled = sp.ehpad === "1";
-  const isEhpadDisabled = sp.ehpad === "0";
+  const isAC2NEnabled = sp.AC2N === "1";
+  const isAC2NDisabled = sp.AC2N === "0";
   const isRoleUpdated = sp.role_updated === "1";
   const isDeleted = sp.deleted === "1";
 
@@ -267,7 +267,7 @@ export default async function AdminPlayersPage({
   });
 
   const alertCount = rows.filter((row) => row.shouldAlert).length;
-  const ehpadCount = rows.filter((row) => row.isEhpadMember).length;
+  const AC2NCount = rows.filter((row) => row.isAC2NMember).length;
 
   return (
     <SiteShell>
@@ -305,7 +305,7 @@ export default async function AdminPlayersPage({
                     Membres EHPAD
                   </p>
                   <p className="mt-1 text-xl font-black text-white md:text-2xl">
-                    {ehpadCount}
+                    {AC2NCount}
                   </p>
                 </div>
 

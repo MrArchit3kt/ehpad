@@ -108,8 +108,8 @@ export async function SiteSidebar() {
             <div className="flex items-center gap-3">
               <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
                 <Image
-                  src="/images/ehpad-logo.png"
-                  alt="Logo EHPAD"
+                  src="/images/AC2N-logo.png"
+                  alt="Logo AC2N"
                   fill
                   className="object-cover"
                 />
@@ -117,10 +117,10 @@ export async function SiteSidebar() {
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
-                  EHPAD
+                  AC2N
                 </p>
                 <h2 className="neon-title neon-gradient-text text-lg font-black">
-                  Squad Manager
+                  AC2N Manager
                 </h2>
               </div>
             </div>

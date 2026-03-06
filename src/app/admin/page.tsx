@@ -90,7 +90,7 @@ export default async function AdminHomePage() {
           </h1>
 
           <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-            Gère la communauté EHPAD : joueurs, inscriptions, mix, événements,
+            Gère la communauté AC2N : joueurs, inscriptions, mix, événements,
             demandes de contact, règlement et configuration globale du site.
           </p>
         </div>

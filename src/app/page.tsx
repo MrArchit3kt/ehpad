@@ -49,7 +49,7 @@ export default async function HomePage() {
     config?.homeDescription ??
     "Plateforme de gestion de team, mix automatique, événements, modération et organisation complète de la communauté.";
 
-  const heroImageUrl = config?.homeHeroImageUrl?.trim() || "/images/ehpad-hero.png";
+  const heroImageUrl = config?.homeHeroImageUrl?.trim() || "/images/AC2N-hero.png";
   const eventsEnabled = config?.eventsEnabled ?? true;
   const socialsEnabled = config?.socialsEnabled ?? true;
   const contactEnabled = config?.contactEnabled ?? true;

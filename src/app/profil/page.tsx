@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { SiteShell } from "@/components/layout/site-shell";
+import { ProfileAutoRefresh } from "@/components/profil/profile-auto-refresh";
 import { requireAuth } from "@/server/auth/session";
 import { db } from "@/lib/prisma";
 import { updateProfile } from "@/server/profil/update-profile";
@@ -85,6 +87,9 @@ export default async function ProfilePage({
 
   return (
     <SiteShell>
+      {/* Auto refresh DB -> la team apparaît sans refresh manuel */}
+      <ProfileAutoRefresh intervalMs={5000} />
+
       <div className="grid gap-6">
         <div className="neon-card p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
@@ -190,7 +195,8 @@ export default async function ProfilePage({
                       member.tempPlayer?.nickname ??
                       "Non renseigné";
 
-                    const memberPlatform = member.user?.platform ?? "Temporaire";
+                    const memberPlatform =
+                      member.user?.platform ?? "Temporaire";
 
                     return (
                       <div key={member.id} className="neon-card-soft p-4">
@@ -212,7 +218,10 @@ export default async function ProfilePage({
 
                         {member.tempPlayer?.note ? (
                           <p className="neon-text-muted mt-2 text-xs">
-                            Note : <span className="text-white">{member.tempPlayer.note}</span>
+                            Note :{" "}
+                            <span className="text-white">
+                              {member.tempPlayer.note}
+                            </span>
                           </p>
                         ) : null}
                       </div>

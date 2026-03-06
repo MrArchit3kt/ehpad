@@ -66,8 +66,8 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
             <Image
-              src="/images/ehpad-logo.png"
-              alt="Logo EHPAD"
+              src="/images/AC2N-logo.png"
+              alt="Logo AC2N"
               fill
               className="object-cover"
             />
@@ -75,10 +75,10 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
 
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
-              EHPAD
+              AC2N
             </p>
             <h2 className="neon-title neon-gradient-text text-base font-black">
-              Squad Manager
+              AC2N Manager
             </h2>
           </div>
         </div>
@@ -108,8 +108,8 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
                 <div className="flex items-center gap-3">
                   <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
                     <Image
-                      src="/images/ehpad-logo.png"
-                      alt="Logo EHPAD"
+                      src="/images/AC2N-logo.png"
+                      alt="Logo AC2N"
                       fill
                       className="object-cover"
                     />
@@ -117,10 +117,10 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
-                      EHPAD
+                      AC2N
                     </p>
                     <h2 className="neon-title neon-gradient-text text-base font-black">
-                      Squad Manager
+                      AC2N Squad Manager
                     </h2>
                   </div>
                 </div>

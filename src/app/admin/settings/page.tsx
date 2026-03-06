@@ -117,8 +117,8 @@ export default async function AdminSettingsPage({
               <input
                 name="homeHeroImageUrl"
                 type="text"
-                defaultValue={config?.homeHeroImageUrl ?? "/images/ehpad-hero.png"}
-                placeholder="/images/ehpad-hero.png"
+                defaultValue={config?.homeHeroImageUrl ?? "/images/AC2N-hero.png"}
+                placeholder="/images/AC2N-hero.png"
                 className="w-full px-4 py-3"
               />
             </div>
