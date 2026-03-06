@@ -44,22 +44,14 @@ function getTeamSizesPreview(total: number): number[] | null {
 function formatTeamSizesPreview(total: number) {
   const sizes = getTeamSizesPreview(total);
 
-  if (!sizes) {
-    return "Impossible";
-  }
+  if (!sizes) return "Impossible";
 
   const teamsOf4 = sizes.filter((size) => size === 4).length;
   const teamsOf3 = sizes.filter((size) => size === 3).length;
 
   const parts: string[] = [];
-
-  if (teamsOf4 > 0) {
-    parts.push(`${teamsOf4}x4`);
-  }
-
-  if (teamsOf3 > 0) {
-    parts.push(`${teamsOf3}x3`);
-  }
+  if (teamsOf4 > 0) parts.push(`${teamsOf4}x4`);
+  if (teamsOf3 > 0) parts.push(`${teamsOf3}x3`);
 
   return parts.join(" + ");
 }
@@ -78,10 +70,7 @@ export default async function AdminMixPage({
   }>;
 }) {
   const admin = await requireAdmin();
-
-  if (!admin) {
-    redirect("/dashboard");
-  }
+  if (!admin) redirect("/dashboard");
 
   const sp = (await searchParams) ?? {};
   const errorMessage = getErrorMessage(sp.error);
@@ -105,24 +94,18 @@ export default async function AdminMixPage({
       warzoneUsername: true,
       platform: true,
     },
-    orderBy: {
-      displayName: "asc",
-    },
+    orderBy: { displayName: "asc" },
   });
 
   const availableTempPlayers = await db.tempPlayer.findMany({
-    where: {
-      isAvailableForMix: true,
-    },
+    where: { isAvailableForMix: true },
     select: {
       id: true,
       nickname: true,
       note: true,
       createdAt: true,
     },
-    orderBy: {
-      nickname: "asc",
-    },
+    orderBy: { nickname: "asc" },
   });
 
   const availableUserIds = availableUsers.map((player) => player.id);
@@ -143,9 +126,7 @@ export default async function AdminMixPage({
       warzoneUsername: true,
       platform: true,
     },
-    orderBy: {
-      displayName: "asc",
-    },
+    orderBy: { displayName: "asc" },
   });
 
   const onlineAdmins = await db.user.findMany({
@@ -153,9 +134,7 @@ export default async function AdminMixPage({
       isOnline: true,
       status: "ACTIVE",
       registrationStatus: "APPROVED",
-      role: {
-        in: ["ADMIN", "SUPER_ADMIN"],
-      },
+      role: { in: ["ADMIN", "SUPER_ADMIN"] },
     },
     select: {
       id: true,
@@ -163,17 +142,16 @@ export default async function AdminMixPage({
       username: true,
       role: true,
     },
-    orderBy: {
-      displayName: "asc",
-    },
+    orderBy: { displayName: "asc" },
   });
 
+  // ✅ NEW: PK = game, not id
   const mixLock = await db.mixGenerationLock.findUnique({
-    where: { id: "main" },
+    where: { game: "WARZONE" },
     select: {
-      id: true,
-      selectedAdminId: true,
-      selectedAdmin: {
+      game: true,
+      selectedUserId: true,
+      selectedUser: {
         select: {
           id: true,
           displayName: true,
@@ -187,8 +165,10 @@ export default async function AdminMixPage({
   const totalPoolCount = availableUsers.length + availableTempPlayers.length;
   const poolDistribution = formatTeamSizesPreview(totalPoolCount);
   const canGenerateByCount = poolDistribution !== "Impossible";
+
   const canCurrentAdminGenerate =
-    !!mixLock?.selectedAdminId && mixLock.selectedAdminId === admin.id;
+    !!mixLock?.selectedUserId && mixLock.selectedUserId === admin.id;
+
   const canGenerate = canGenerateByCount && canCurrentAdminGenerate;
 
   const latestSession = sessionId
@@ -223,9 +203,7 @@ export default async function AdminMixPage({
         },
       })
     : await db.mixSession.findFirst({
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
         include: {
           teams: {
             orderBy: { teamNumber: "asc" },
@@ -260,7 +238,7 @@ export default async function AdminMixPage({
       <div className="grid gap-5">
         <div className="neon-card p-5 md:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-            Admin Mix
+            Warzone Mix (Admin)
           </p>
           <h2 className="neon-title neon-gradient-text mt-2 text-2xl font-black md:text-3xl">
             Mélangeur d’équipes
@@ -292,8 +270,8 @@ export default async function AdminMixPage({
                     Sélectionné
                   </p>
                   <p className="mt-1 truncate text-xs font-medium text-white">
-                    {mixLock?.selectedAdmin
-                      ? `${mixLock.selectedAdmin.displayName} (@${mixLock.selectedAdmin.username})`
+                    {mixLock?.selectedUser
+                      ? `${mixLock.selectedUser.displayName} (@${mixLock.selectedUser.username})`
                       : "Aucun admin"}
                   </p>
                 </div>
@@ -303,9 +281,10 @@ export default async function AdminMixPage({
                 action={setMixGenerator}
                 className="grid gap-2 sm:grid-cols-[1fr_auto]"
               >
+                {/* ✅ IMPORTANT: name changed */}
                 <select
-                  name="selectedAdminId"
-                  defaultValue={mixLock?.selectedAdminId ?? ""}
+                  name="selectedUserId"
+                  defaultValue={mixLock?.selectedUserId ?? ""}
                   className="w-full px-3 py-2.5 text-sm"
                 >
                   <option value="">Aucun admin</option>
@@ -406,7 +385,9 @@ export default async function AdminMixPage({
                 <button
                   type="submit"
                   className={`px-5 py-3 ${
-                    canGenerate ? "neon-button" : "neon-button-secondary opacity-60"
+                    canGenerate
+                      ? "neon-button"
+                      : "neon-button-secondary opacity-60"
                   }`}
                   disabled={!canGenerate}
                 >
@@ -416,14 +397,14 @@ export default async function AdminMixPage({
             </div>
           </div>
 
-          {mixLock?.selectedAdmin ? (
+          {mixLock?.selectedUser ? (
             <p className="mt-4 text-sm text-white/80">
               Admin autorisé :{" "}
               <span className="font-semibold text-white">
-                {mixLock.selectedAdmin.displayName}
+                {mixLock.selectedUser.displayName}
               </span>
-              {mixLock.selectedAdmin.username
-                ? ` (@${mixLock.selectedAdmin.username})`
+              {mixLock.selectedUser.username
+                ? ` (@${mixLock.selectedUser.username})`
                 : ""}
               .
               {!canCurrentAdminGenerate
@@ -437,7 +418,9 @@ export default async function AdminMixPage({
           )}
 
           {errorMessage ? (
-            <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p>
+            <p className="mt-4 text-sm font-medium text-rose-400">
+              {errorMessage}
+            </p>
           ) : null}
 
           {isSuccess ? (
@@ -489,7 +472,9 @@ export default async function AdminMixPage({
                     </p>
                     <p className="neon-text-muted mt-2 truncate text-[11px]">
                       Warzone :{" "}
-                      <span className="text-white">{player.warzoneUsername}</span>
+                      <span className="text-white">
+                        {player.warzoneUsername}
+                      </span>
                     </p>
                     <p className="neon-text-muted mt-1 truncate text-[11px]">
                       Plateforme :{" "}
