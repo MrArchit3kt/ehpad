@@ -58,18 +58,21 @@ export async function generateMix() {
     redirect("/dashboard");
   }
 
+  // ✅ PK = game (plus id)
   const mixLock = await db.mixGenerationLock.findUnique({
-    where: { id: "main" },
+    where: { game: "WARZONE" },
     select: {
-      selectedAdminId: true,
+      selectedUserId: true,
     },
   });
 
-  if (!mixLock?.selectedAdminId) {
+  // Si aucun admin sélectionné pour WARZONE
+  if (!mixLock?.selectedUserId) {
     redirect("/admin/mix?error=no_mix_admin");
   }
 
-  if (mixLock.selectedAdminId !== admin.id) {
+  // Si un autre admin est sélectionné
+  if (mixLock.selectedUserId !== admin.id) {
     redirect("/admin/mix?error=locked");
   }
 
@@ -77,6 +80,8 @@ export async function generateMix() {
     where: {
       status: "ACTIVE",
       registrationStatus: "APPROVED",
+      // si tu as migré vers isAvailableForWarzoneMix, remplace ici :
+      // isAvailableForWarzoneMix: true,
       isAvailableForMix: true,
     },
     select: {
@@ -100,14 +105,8 @@ export async function generateMix() {
   });
 
   const poolPlayers: PoolPlayer[] = [
-    ...users.map((player) => ({
-      kind: "USER" as const,
-      id: player.id,
-    })),
-    ...tempPlayers.map((player) => ({
-      kind: "TEMP" as const,
-      id: player.id,
-    })),
+    ...users.map((player) => ({ kind: "USER" as const, id: player.id })),
+    ...tempPlayers.map((player) => ({ kind: "TEMP" as const, id: player.id })),
   ];
 
   const teamSizes = getTeamSizes(poolPlayers.length);
@@ -125,6 +124,7 @@ export async function generateMix() {
         allowTeamsOfThree: true,
         keepRemainderAsBench: false,
         createdById: admin.id,
+        game: "WARZONE",
       },
     });
 
@@ -161,29 +161,18 @@ export async function generateMix() {
           },
         });
 
-        if (player.kind === "USER") {
-          await db.mixSessionPlayer.updateMany({
-            where: {
-              sessionId: session.id,
-              userId: player.id,
-            },
-            data: {
-              status: "ASSIGNED",
-              assignedAt: new Date(),
-            },
-          });
-        } else {
-          await db.mixSessionPlayer.updateMany({
-            where: {
-              sessionId: session.id,
-              tempPlayerId: player.id,
-            },
-            data: {
-              status: "ASSIGNED",
-              assignedAt: new Date(),
-            },
-          });
-        }
+        await db.mixSessionPlayer.updateMany({
+          where: {
+            sessionId: session.id,
+            ...(player.kind === "USER"
+              ? { userId: player.id }
+              : { tempPlayerId: player.id }),
+          },
+          data: {
+            status: "ASSIGNED",
+            assignedAt: new Date(),
+          },
+        });
       }
 
       cursor += teamSize;
