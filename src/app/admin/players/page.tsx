@@ -181,8 +181,7 @@ export default async function AdminPlayersPage({
             ],
           }
         : {}),
-      ...(roleFilter &&
-      ["PLAYER", "ADMIN", "SUPER_ADMIN"].includes(roleFilter)
+      ...(roleFilter && ["PLAYER", "ADMIN", "SUPER_ADMIN"].includes(roleFilter)
         ? { role: roleFilter as "PLAYER" | "ADMIN" | "SUPER_ADMIN" }
         : {}),
       ...(statusFilter && ["ACTIVE", "INACTIVE", "BANNED"].includes(statusFilter)
@@ -256,7 +255,13 @@ export default async function AdminPlayersPage({
       status: player.status,
       createdAt: player.createdAt,
       lastSeenAt: player.lastSeenAt,
+
+      // champ DB
       isEhpadMember: player.isEhpadMember,
+
+      // alias UI AC2N
+      isAC2NMember: player.isEhpadMember,
+
       inactiveDays,
       totalWarnings,
       activeWarnings,
@@ -285,7 +290,7 @@ export default async function AdminPlayersPage({
                   Suivi des joueurs
                 </h2>
                 <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-                  Vue admin de l’activité, de l’inactivité, des membres EHPAD et de
+                  Vue admin de l’activité, de l’inactivité, des membres AC2N et de
                   la modération des joueurs.
                 </p>
               </div>
@@ -302,7 +307,7 @@ export default async function AdminPlayersPage({
 
                 <div className="neon-card-soft px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
-                    Membres EHPAD
+                    Membres AC2N
                   </p>
                   <p className="mt-1 text-xl font-black text-white md:text-2xl">
                     {AC2NCount}
@@ -320,7 +325,10 @@ export default async function AdminPlayersPage({
               </div>
             </div>
 
-            <form method="GET" className="grid gap-3 md:grid-cols-[1.6fr_1fr_1fr_auto]">
+            <form
+              method="GET"
+              className="grid gap-3 md:grid-cols-[1.6fr_1fr_1fr_auto]"
+            >
               <input
                 type="text"
                 name="q"
@@ -414,18 +422,18 @@ export default async function AdminPlayersPage({
           </div>
         ) : null}
 
-        {isEhpadEnabled ? (
+        {isAC2NEnabled ? (
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-emerald-300">
-              Membre EHPAD activé avec succès.
+              Membre AC2N activé avec succès.
             </p>
           </div>
         ) : null}
 
-        {isEhpadDisabled ? (
+        {isAC2NDisabled ? (
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-amber-300">
-              Membre EHPAD désactivé avec succès.
+              Membre AC2N désactivé avec succès.
             </p>
           </div>
         ) : null}
@@ -450,18 +458,14 @@ export default async function AdminPlayersPage({
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-amber-300">
               Attention : {alertCount} joueur{alertCount > 1 ? "s" : ""} n’a /
-              n’ont pas été vu{alertCount > 1 ? "s" : ""} depuis au moins 10
-              jours.
+              n’ont pas été vu{alertCount > 1 ? "s" : ""} depuis au moins 10 jours.
             </p>
           </div>
         ) : null}
 
         <div className="grid gap-4">
           {rows.map((player) => (
-            <details
-              key={player.id}
-              className="group neon-card overflow-hidden p-0"
-            >
+            <details key={player.id} className="group neon-card overflow-hidden p-0">
               <summary className="list-none cursor-pointer p-4 md:p-5">
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0 flex-1">
@@ -487,7 +491,7 @@ export default async function AdminPlayersPage({
                             : "rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/70"
                         }
                       >
-                        {player.isEhpadMember ? "Membre EHPAD" : "Externe"}
+                        {player.isEhpadMember ? "Membre AC2N" : "Externe"}
                       </span>
 
                       {player.shouldAlert ? (
@@ -519,9 +523,7 @@ export default async function AdminPlayersPage({
                       <p className="mt-1 text-xs font-semibold text-white">
                         {player.inactiveDays === null
                           ? "Jamais vu"
-                          : `${player.inactiveDays} jour${
-                              player.inactiveDays > 1 ? "s" : ""
-                            }`}
+                          : `${player.inactiveDays} jour${player.inactiveDays > 1 ? "s" : ""}`}
                       </p>
                     </div>
 
@@ -554,76 +556,21 @@ export default async function AdminPlayersPage({
 
               <div className="border-t border-white/8 px-4 pb-4 pt-4 md:px-5 md:pb-5">
                 <div className="grid gap-4">
-                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                        Email
-                      </p>
-                      <p className="mt-1 break-all text-sm text-white">
-                        {player.email}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                        Entrée
-                      </p>
-                      <p className="mt-1 text-sm text-white">
-                        {formatDate(player.createdAt)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
-                        Dernière connexion
-                      </p>
-                      <p className="mt-1 text-sm text-white">
-                        {formatDate(player.lastSeenAt)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-                        Inactivité
-                      </p>
-                      <p className="mt-1 text-sm text-white">
-                        {player.inactiveDays === null
-                          ? "Jamais vu"
-                          : `${player.inactiveDays} jour${
-                              player.inactiveDays > 1 ? "s" : ""
-                            }`}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                        Warnings
-                      </p>
-                      <p className="mt-1 text-sm text-white">
-                        {player.activeWarnings} actif
-                        {player.activeWarnings > 1 ? "s" : ""} /{" "}
-                        {player.totalWarnings}
-                      </p>
-                    </div>
-                  </div>
-
                   <div className="grid gap-4 xl:grid-cols-4">
                     <div className="rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.03] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                        Statut team EHPAD
+                        Statut team AC2N
                       </p>
 
                       <p className="neon-text-muted mt-2 text-sm leading-6">
                         Ce joueur est actuellement{" "}
                         <span className="font-semibold text-white">
-                          {player.isEhpadMember
-                            ? "dans la team EHPAD"
-                            : "hors team EHPAD"}
+                          {player.isEhpadMember ? "dans la team AC2N" : "hors team AC2N"}
                         </span>
                         .
                       </p>
 
-                      <form action={toggleEhpadMember} className="mt-3">
+                      <form action={toggleAC2NMember} className="mt-3">
                         <input type="hidden" name="userId" value={player.id} />
                         <input
                           type="hidden"
@@ -634,14 +581,10 @@ export default async function AdminPlayersPage({
                         <button
                           type="submit"
                           className={`w-full px-5 py-3 ${
-                            player.isEhpadMember
-                              ? "neon-button-secondary"
-                              : "neon-button"
+                            player.isEhpadMember ? "neon-button-secondary" : "neon-button"
                           }`}
                         >
-                          {player.isEhpadMember
-                            ? "Retirer de la team"
-                            : "Activer membre EHPAD"}
+                          {player.isEhpadMember ? "Retirer de la team" : "Activer membre AC2N"}
                         </button>
                       </form>
                     </div>
@@ -662,27 +605,19 @@ export default async function AdminPlayersPage({
                         <p className="mt-3 text-xs text-white/60">
                           Le rôle SUPER_ADMIN est verrouillé ici.
                         </p>
-                      ) : admin.role === "SUPER_ADMIN" ? (
+                      ) : (
                         <form action={toggleUserRole} className="mt-3">
                           <input type="hidden" name="userId" value={player.id} />
 
                           <button
                             type="submit"
                             className={`w-full px-5 py-3 ${
-                              player.role === "ADMIN"
-                                ? "neon-button-secondary"
-                                : "neon-button"
+                              player.role === "ADMIN" ? "neon-button-secondary" : "neon-button"
                             }`}
                           >
-                            {player.role === "ADMIN"
-                              ? "Retirer admin"
-                              : "Passer en admin"}
+                            {player.role === "ADMIN" ? "Retirer admin" : "Passer en admin"}
                           </button>
                         </form>
-                      ) : (
-                        <p className="mt-3 text-xs text-white/60">
-                          Seul un super admin peut modifier les rôles.
-                        </p>
                       )}
                     </div>
 
@@ -695,10 +630,7 @@ export default async function AdminPlayersPage({
                         Définit un mot de passe temporaire.
                       </p>
 
-                      <form
-                        action={resetPlayerPassword}
-                        className="mt-3 grid gap-3"
-                      >
+                      <form action={resetPlayerPassword} className="mt-3 grid gap-3">
                         <input type="hidden" name="userId" value={player.id} />
 
                         <input
@@ -719,112 +651,13 @@ export default async function AdminPlayersPage({
                       </form>
                     </div>
 
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-                        Ajouter un avertissement
-                      </p>
-
-                      <form action={addWarning} className="mt-3 grid gap-3">
-                        <input type="hidden" name="userId" value={player.id} />
-
-                        <select
-                          name="type"
-                          defaultValue="TOXICITY"
-                          className="w-full px-4 py-3"
-                        >
-                          <option value="TOXICITY">Toxicité</option>
-                          <option value="ABSENCE">Absence</option>
-                          <option value="AFK">AFK</option>
-                          <option value="INSULT">Insulte</option>
-                          <option value="CHEATING_SUSPECT">
-                            Suspicion de cheat
-                          </option>
-                          <option value="TEAM_REFUSAL">Refus d’équipe</option>
-                          <option value="SPAM">Spam</option>
-                          <option value="OTHER">Autre</option>
-                        </select>
-
-                        <input
-                          name="message"
-                          type="text"
-                          required
-                          placeholder="Raison de l’avertissement"
-                          className="w-full px-4 py-3"
-                        />
-
-                        <button
-                          type="submit"
-                          className="neon-button w-full px-5 py-3"
-                        >
-                          Avertir
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
-                          Historique des changements de rôle
-                        </p>
-                        <span className="neon-badge">
-                          {player.roleHistory.length} total
-                        </span>
-                      </div>
-
-                      {player.roleHistory.length === 0 ? (
-                        <p className="neon-text-muted mt-4 text-sm">
-                          Aucun changement de rôle enregistré pour ce joueur.
-                        </p>
-                      ) : (
-                        <div className="mt-4 grid gap-3">
-                          {player.roleHistory.map((entry) => (
-                            <div
-                              key={entry.id}
-                              className="rounded-2xl border border-white/8 bg-black/20 p-4"
-                            >
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className={getRoleBadgeClass(entry.previousRole)}
-                                >
-                                  {getRoleLabel(entry.previousRole)}
-                                </span>
-
-                                <span className="text-white/50">→</span>
-
-                                <span className={getRoleBadgeClass(entry.nextRole)}>
-                                  {getRoleLabel(entry.nextRole)}
-                                </span>
-
-                                <span className="text-xs text-white/50">
-                                  {formatDate(entry.createdAt)}
-                                </span>
-                              </div>
-
-                              <p className="mt-3 text-sm text-white">
-                                Modifié par{" "}
-                                <span className="font-semibold">
-                                  {entry.adminUser?.displayName ?? "Admin inconnu"}
-                                </span>
-                                {entry.adminUser?.username
-                                  ? ` (@${entry.adminUser.username})`
-                                  : ""}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
                     <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.04] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-300/80">
                         Suppression du joueur
                       </p>
 
                       <p className="mt-2 text-sm leading-6 text-white/75">
-                        Cette action supprime définitivement ce compte et ses
-                        données liées en cascade.
+                        Cette action supprime définitivement ce compte et ses données liées en cascade.
                       </p>
 
                       <form action={deletePlayer} className="mt-3">
@@ -839,16 +672,46 @@ export default async function AdminPlayersPage({
                     </div>
                   </div>
 
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+                      Ajouter un avertissement
+                    </p>
+
+                    <form action={addWarning} className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                      <input type="hidden" name="userId" value={player.id} />
+
+                      <select name="type" defaultValue="TOXICITY" className="w-full px-4 py-3">
+                        <option value="TOXICITY">Toxicité</option>
+                        <option value="ABSENCE">Absence</option>
+                        <option value="AFK">AFK</option>
+                        <option value="INSULT">Insulte</option>
+                        <option value="CHEATING_SUSPECT">Suspicion de cheat</option>
+                        <option value="TEAM_REFUSAL">Refus d’équipe</option>
+                        <option value="SPAM">Spam</option>
+                        <option value="OTHER">Autre</option>
+                      </select>
+
+                      <input
+                        name="message"
+                        type="text"
+                        required
+                        placeholder="Raison de l’avertissement"
+                        className="w-full px-4 py-3"
+                      />
+
+                      <button type="submit" className="neon-button px-5 py-3">
+                        Avertir
+                      </button>
+                    </form>
+                  </div>
+
                   {player.status === "BANNED" ? (
                     <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.04] p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-300/80">
                         Déban du joueur
                       </p>
 
-                      <form
-                        action={liftBan}
-                        className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]"
-                      >
+                      <form action={liftBan} className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]">
                         <input type="hidden" name="userId" value={player.id} />
 
                         <input
@@ -870,9 +733,7 @@ export default async function AdminPlayersPage({
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                         Historique des avertissements
                       </p>
-                      <span className="neon-badge">
-                        {player.totalWarnings} total
-                      </span>
+                      <span className="neon-badge">{player.totalWarnings} total</span>
                     </div>
 
                     {player.warnings.length === 0 ? (
@@ -887,9 +748,7 @@ export default async function AdminPlayersPage({
                             className="rounded-2xl border border-white/8 bg-black/20 p-4"
                           >
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="neon-badge">
-                                {getWarningTypeLabel(warning.type)}
-                              </span>
+                              <span className="neon-badge">{getWarningTypeLabel(warning.type)}</span>
 
                               <span
                                 className={
@@ -906,20 +765,7 @@ export default async function AdminPlayersPage({
                               </span>
                             </div>
 
-                            <p className="mt-3 text-sm text-white">
-                              {warning.message}
-                            </p>
-
-                            {warning.status === "REVOKED" ? (
-                              <div className="mt-3 text-xs text-emerald-300/80">
-                                <p>Révoqué le : {formatDate(warning.revokedAt)}</p>
-                                {warning.revokedReason ? (
-                                  <p className="mt-1">
-                                    Motif : {warning.revokedReason}
-                                  </p>
-                                ) : null}
-                              </div>
-                            ) : null}
+                            <p className="mt-3 text-sm text-white">{warning.message}</p>
 
                             {warning.status === "ACTIVE" ? (
                               <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.02] p-4">
@@ -931,11 +777,7 @@ export default async function AdminPlayersPage({
                                   action={revokeWarning}
                                   className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]"
                                 >
-                                  <input
-                                    type="hidden"
-                                    name="warningId"
-                                    value={warning.id}
-                                  />
+                                  <input type="hidden" name="warningId" value={warning.id} />
 
                                   <input
                                     name="reason"
@@ -952,7 +794,14 @@ export default async function AdminPlayersPage({
                                   </button>
                                 </form>
                               </div>
-                            ) : null}
+                            ) : (
+                              <div className="mt-3 text-xs text-emerald-300/80">
+                                <p>Révoqué le : {formatDate(warning.revokedAt)}</p>
+                                {warning.revokedReason ? (
+                                  <p className="mt-1">Motif : {warning.revokedReason}</p>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
