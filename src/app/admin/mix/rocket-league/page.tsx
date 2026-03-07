@@ -6,6 +6,7 @@ import { requireAdmin } from "@/server/auth/session";
 import { db } from "@/lib/prisma";
 import { generateMix } from "@/server/mix/generate-mix";
 import { setMixGenerator } from "@/server/mix/set-mix-generator";
+import { createTempPlayer } from "@/server/mix/create-temp-player";
 
 function getErrorMessage(error?: string) {
   switch (error) {
@@ -36,6 +37,7 @@ export default async function AdminRocketLeagueMixPage({
     success?: string;
     lock_set?: string;
     lock_cleared?: string;
+    added?: string; // ✅ pour l’invité
     session?: string;
   }>;
 }) {
@@ -45,6 +47,7 @@ export default async function AdminRocketLeagueMixPage({
   const sp = (await searchParams) ?? {};
   const errorMessage = getErrorMessage(sp.error);
   const isSuccess = sp.success === "1";
+  const isAdded = sp.added === "1";
   const isLockSet = sp.lock_set === "1";
   const isLockCleared = sp.lock_cleared === "1";
   const sessionId = sp.session;
@@ -101,7 +104,7 @@ export default async function AdminRocketLeagueMixPage({
       ? totalPoolCount % 2 === 0
       : totalPoolCount % 3 === 0);
 
-  // optionnel : dernière session RL (juste pour debug / affichage)
+  // optionnel : dernière session RL
   const latestSession = sessionId
     ? await db.mixSession.findUnique({
         where: { id: sessionId },
@@ -124,10 +127,50 @@ export default async function AdminRocketLeagueMixPage({
             Rocket League Mix
           </h2>
           <p className="neon-text-muted mt-3 max-w-3xl text-sm leading-6 md:text-base">
-            Génération d’équipes Rocket League en 2v2 ou 3v3, avec contrainte de rang.
+            Génération d’équipes Rocket League en 2v2 ou 3v3, avec contrainte de
+            rang.
           </p>
         </div>
 
+        {errorMessage ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
+          </div>
+        ) : null}
+
+        {isSuccess ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-emerald-400">
+              Équipes générées avec succès.
+            </p>
+          </div>
+        ) : null}
+
+        {isAdded ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-emerald-300">
+              Invité ajouté avec succès.
+            </p>
+          </div>
+        ) : null}
+
+        {isLockSet ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-cyan-300">
+              Sélection mise à jour.
+            </p>
+          </div>
+        ) : null}
+
+        {isLockCleared ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-amber-300">
+              Sélection retirée.
+            </p>
+          </div>
+        ) : null}
+
+        {/* Contrôle générateur */}
         <div className="neon-card p-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
@@ -165,7 +208,10 @@ export default async function AdminRocketLeagueMixPage({
               </div>
             </div>
 
-            <form action={setMixGenerator} className="grid gap-2 sm:grid-cols-[1fr_180px_auto]">
+            <form
+              action={setMixGenerator}
+              className="grid gap-2 sm:grid-cols-[1fr_180px_auto]"
+            >
               <input type="hidden" name="game" value="ROCKET_LEAGUE" />
 
               <select
@@ -191,16 +237,63 @@ export default async function AdminRocketLeagueMixPage({
                 <option value="THREE">3v3</option>
               </select>
 
-              <button type="submit" className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]">
+              <button
+                type="submit"
+                className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]"
+              >
                 Enregistrer
               </button>
             </form>
-
-            {isLockSet ? <p className="text-sm font-medium text-cyan-300">Sélection mise à jour.</p> : null}
-            {isLockCleared ? <p className="text-sm font-medium text-amber-300">Sélection retirée.</p> : null}
           </div>
         </div>
 
+        {/* ✅ Card Invité (même style que Warzone) */}
+        <div className="neon-card p-4">
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                Ajouter un joueur temporaire
+              </p>
+              <h3 className="mt-1 text-base font-bold text-white">
+                Joueur invité sans compte
+              </h3>
+              <p className="neon-text-muted mt-1 text-xs leading-5">
+                ⚠️ Techniquement, les invités (TempPlayer) sont globaux dans la DB
+                et servent surtout au pool Warzone. Cette card existe ici pour
+                garder la même UX.
+              </p>
+            </div>
+
+            <form
+              action={createTempPlayer}
+              className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+            >
+              <input type="hidden" name="game" value="ROCKET_LEAGUE" />
+
+              <input
+                name="nickname"
+                type="text"
+                required
+                placeholder="Pseudo joueur"
+                className="w-full px-3 py-2.5 text-sm"
+              />
+              <input
+                name="note"
+                type="text"
+                placeholder="Note optionnelle"
+                className="w-full px-3 py-2.5 text-sm"
+              />
+              <button
+                type="submit"
+                className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]"
+              >
+                Ajouter
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Pool + génération */}
         <div className="neon-card p-5 md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -219,7 +312,9 @@ export default async function AdminRocketLeagueMixPage({
               <input type="hidden" name="game" value="ROCKET_LEAGUE" />
               <button
                 type="submit"
-                className={`px-5 py-3 ${canGenerate ? "neon-button" : "neon-button-secondary opacity-60"}`}
+                className={`px-5 py-3 ${
+                  canGenerate ? "neon-button" : "neon-button-secondary opacity-60"
+                }`}
                 disabled={!canGenerate}
               >
                 Générer
@@ -230,8 +325,13 @@ export default async function AdminRocketLeagueMixPage({
           {lock?.selectedUser ? (
             <p className="mt-4 text-sm text-white/80">
               Admin autorisé :{" "}
-              <span className="font-semibold text-white">{lock.selectedUser.displayName}</span>
-              {lock.selectedUser.username ? ` (@${lock.selectedUser.username})` : ""}.
+              <span className="font-semibold text-white">
+                {lock.selectedUser.displayName}
+              </span>
+              {lock.selectedUser.username
+                ? ` (@${lock.selectedUser.username})`
+                : ""}
+              .
               {!canCurrentAdminGenerate
                 ? " Tu ne peux pas générer tant que cette sélection est active."
                 : " Tu peux générer les équipes."}
@@ -242,28 +342,31 @@ export default async function AdminRocketLeagueMixPage({
             </p>
           )}
 
-          {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p> : null}
-          {isSuccess ? <p className="mt-4 text-sm font-medium text-emerald-400">Équipes générées avec succès.</p> : null}
-
           <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {poolUsers.length === 0 ? (
               <div className="neon-card-soft p-4">
-                <p className="neon-text-muted text-sm">Aucun joueur dans le pool.</p>
+                <p className="neon-text-muted text-sm">
+                  Aucun joueur dans le pool.
+                </p>
               </div>
             ) : (
               poolUsers.map((p) => (
                 <div key={p.id} className="neon-card-soft p-3">
-                  <h4 className="truncate text-sm font-bold text-white">{p.displayName}</h4>
-                  <p className="neon-text-muted mt-1 truncate text-[11px]">@{p.username}</p>
+                  <h4 className="truncate text-sm font-bold text-white">
+                    {p.displayName}
+                  </h4>
+                  <p className="neon-text-muted mt-1 truncate text-[11px]">
+                    @{p.username}
+                  </p>
                   <p className="neon-text-muted mt-2 truncate text-[11px]">
-                    Rang : <span className="text-white">{p.rocketLeagueRank ?? "?"}</span>
+                    Rang :{" "}
+                    <span className="text-white">{p.rocketLeagueRank ?? "?"}</span>
                   </p>
                 </div>
               ))
             )}
           </div>
 
-          {/* optionnel: debug session */}
           {latestSession ? (
             <p className="mt-4 text-xs text-white/40">
               Dernière session: {latestSession.id.slice(-6).toUpperCase()}
