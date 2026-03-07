@@ -42,8 +42,6 @@ export async function setMixGenerator(formData: FormData) {
   if (!admin) redirect("/dashboard");
 
   const game = gameFrom(formData.get("game")) ?? "WARZONE";
-
-  // ⚠️ IMPORTANT: le form doit envoyer selectedAdminId (pas selectedUserId)
   const selectedAdminId = String(formData.get("selectedAdminId") ?? "").trim();
   const rlTeamSize = rlTeamSizeFrom(formData.get("rlTeamSize"));
 
@@ -55,7 +53,8 @@ export async function setMixGenerator(formData: FormData) {
         create: {
           game,
           selectedUserId: null,
-          rocketLeagueTeamSize: game === "ROCKET_LEAGUE" ? (rlTeamSize ?? null) : null,
+          rocketLeagueTeamSize:
+            game === "ROCKET_LEAGUE" ? (rlTeamSize ?? null) : null,
         },
         update: {
           selectedUserId: null,
@@ -65,10 +64,9 @@ export async function setMixGenerator(formData: FormData) {
         },
       });
 
-      redirectTo(game, "?lock_cleared=1");
+      return redirectTo(game, "?lock_cleared=1");
     }
 
-    // ✅ Vérifie user cible
     const selectedAdmin = await db.user.findUnique({
       where: { id: selectedAdminId },
       select: {
@@ -79,7 +77,10 @@ export async function setMixGenerator(formData: FormData) {
       },
     });
 
-    if (!selectedAdmin) redirectTo(game, "?error=server");
+    // ✅ IMPORTANT: return pour satisfaire TS (narrowing)
+    if (!selectedAdmin) {
+      return redirectTo(game, "?error=server");
+    }
 
     const allowedRoles = ["ADMIN", "SUPER_ADMIN"] as const;
 
@@ -88,12 +89,11 @@ export async function setMixGenerator(formData: FormData) {
       selectedAdmin.status !== "ACTIVE" ||
       selectedAdmin.registrationStatus !== "APPROVED"
     ) {
-      redirectTo(game, "?error=server");
+      return redirectTo(game, "?error=server");
     }
 
-    // ✅ RL : exige un format
     if (game === "ROCKET_LEAGUE" && !rlTeamSize) {
-      redirectTo(game, "?error=no_team_size");
+      return redirectTo(game, "?error=no_team_size");
     }
 
     await db.mixGenerationLock.upsert({
@@ -109,10 +109,10 @@ export async function setMixGenerator(formData: FormData) {
       },
     });
 
-    redirectTo(game, "?lock_set=1");
+    return redirectTo(game, "?lock_set=1");
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     console.error("SET_MIX_GENERATOR_ERROR", error);
-    redirectTo(game, "?error=server");
+    return redirectTo(game, "?error=server");
   }
 }
