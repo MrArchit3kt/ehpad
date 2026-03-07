@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
+import type { UserRole } from "@/generated/prisma";
 
 type MixGame = "WARZONE" | "ROCKET_LEAGUE";
 type RLTeamSize = "TWO" | "THREE";
@@ -77,21 +78,22 @@ export async function setMixGenerator(formData: FormData) {
       },
     });
 
-    // ✅ IMPORTANT: return pour satisfaire TS (narrowing)
     if (!selectedAdmin) {
       return redirectTo(game, "?error=server");
     }
 
-    const allowedRoles = ["ADMIN", "SUPER_ADMIN"] as const;
+    // ✅ Fix TS: on utilise un Set<UserRole>
+    const allowedRoles = new Set<UserRole>(["ADMIN", "SUPER_ADMIN"]);
 
     if (
-      !allowedRoles.includes(selectedAdmin.role) ||
+      !allowedRoles.has(selectedAdmin.role) ||
       selectedAdmin.status !== "ACTIVE" ||
       selectedAdmin.registrationStatus !== "APPROVED"
     ) {
       return redirectTo(game, "?error=server");
     }
 
+    // ✅ RL : exige le choix 2v2/3v3 quand on enregistre
     if (game === "ROCKET_LEAGUE" && !rlTeamSize) {
       return redirectTo(game, "?error=no_team_size");
     }
