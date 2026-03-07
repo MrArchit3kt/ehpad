@@ -22,7 +22,9 @@ function gameFrom(v: unknown): MixGame {
 }
 
 function backTo(game: MixGame) {
-  return game === "ROCKET_LEAGUE" ? "/admin/mix/rocket-league" : "/admin/mix/warzone";
+  return game === "ROCKET_LEAGUE"
+    ? "/admin/mix/rocket-league"
+    : "/admin/mix/warzone";
 }
 
 export async function removePlayerFromPool(formData: FormData) {
@@ -45,10 +47,16 @@ export async function removePlayerFromPool(formData: FormData) {
             : { isAvailableForWarzoneMix: false, isOnline: false },
       });
     } else {
-      await db.tempPlayer.update({
-        where: { id: tempPlayerId },
+      // ✅ IMPORTANT: retire uniquement sur le bon jeu
+      const res = await db.tempPlayer.updateMany({
+        where: { id: tempPlayerId, game },
         data: { isAvailableForMix: false },
       });
+
+      if (res.count === 0) {
+        // soit id invalide, soit mismatch game => on renvoie server
+        redirect(`${backTo(game)}?error=server`);
+      }
     }
   } catch (error) {
     if (isNextRedirectError(error)) throw error;

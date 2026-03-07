@@ -24,7 +24,7 @@ function gameFrom(v: unknown): MixGame | null {
   return null;
 }
 
-function redirectToGame(game: MixGame, qs: string) {
+function redirectToGame(game: MixGame, qs: string): never {
   const path =
     game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
   redirect(`${path}${qs}`);
@@ -54,6 +54,9 @@ function getTeamSizesWarzone(total: number): number[] | null {
   return null;
 }
 
+// =======================
+// Rocket League ranks
+// =======================
 const RL_RANK_ORDER = [
   "BRONZE",
   "SILVER",
@@ -72,25 +75,58 @@ function rankIndex(rank: string): number {
   return idx === -1 ? -1 : idx;
 }
 
+function isValidTeam(team: { rocketLeagueRank: string }[]): boolean {
+  const indices = team
+    .map((p) => rankIndex(p.rocketLeagueRank))
+    .filter((x) => x >= 0);
+
+  if (indices.length !== team.length) return false;
+
+  const min = Math.min(...indices);
+  const max = Math.max(...indices);
+  return max - min <= 1;
+}
+
+function findPair(players: { key: string; rocketLeagueRank: string }[]) {
+  for (let a = 0; a < players.length; a += 1) {
+    for (let b = a + 1; b < players.length; b += 1) {
+      const team = [players[a], players[b]];
+      if (isValidTeam(team)) return team;
+    }
+  }
+  return null;
+}
+
+function findTrio(players: { key: string; rocketLeagueRank: string }[]) {
+  for (let a = 0; a < players.length; a += 1) {
+    for (let b = a + 1; b < players.length; b += 1) {
+      for (let c = b + 1; c < players.length; c += 1) {
+        const team = [players[a], players[b], players[c]];
+        if (isValidTeam(team)) return team;
+      }
+    }
+  }
+  return null;
+}
+
 /**
- * Construit des teams RL en respectant:
- * - teamSize imposé (2 ou 3) [Option B]
- * - écart max de 1 tier dans une team (ex: Gold+Plat ok, Gold+Diamond non)
+ * Build RL teams (strict):
+ * - teamSize imposé (2 ou 3) via lock
+ * - écart max de 1 tier dans une team
+ * - nombre de joueurs divisible par teamSize
  */
 function buildRocketLeagueTeams(
-  players: { id: string; rocketLeagueRank: string }[],
+  players: { key: string; rocketLeagueRank: string }[],
   teamSize: 2 | 3,
-): { id: string; rocketLeagueRank: string }[][] | null {
+): { key: string; rocketLeagueRank: string }[][] | null {
   const sorted = [...players].sort(
     (a, b) => rankIndex(a.rocketLeagueRank) - rankIndex(b.rocketLeagueRank),
   );
 
   if (sorted.some((p) => rankIndex(p.rocketLeagueRank) === -1)) return null;
-
-  // doit être divisible exactement par teamSize (Option B strict)
   if (sorted.length % teamSize !== 0) return null;
 
-  const teams: { id: string; rocketLeagueRank: string }[][] = [];
+  const teams: { key: string; rocketLeagueRank: string }[][] = [];
 
   let i = 0;
   while (i < sorted.length) {
@@ -101,16 +137,16 @@ function buildRocketLeagueTeams(
     const max = rankIndex(slice[slice.length - 1].rocketLeagueRank);
 
     if (max - min > 1) {
-      // fenêtre un peu plus large pour essayer une combinaison valide
       const window = sorted.slice(i, i + teamSize + 2);
       const candidates = shuffle(window);
 
-      const pick = teamSize === 2 ? findPair(candidates) : findTrio(candidates);
+      const pick =
+        teamSize === 2 ? findPair(candidates) : findTrio(candidates);
+
       if (!pick) return null;
 
-      // rebuild : retirer pick puis repartir
-      const pickIds = new Set(pick.map((p) => p.id));
-      const remaining = sorted.filter((p) => !pickIds.has(p.id));
+      const pickKeys = new Set(pick.map((p) => p.key));
+      const remaining = sorted.filter((p) => !pickKeys.has(p.key));
 
       sorted.length = 0;
       sorted.push(...remaining);
@@ -125,40 +161,6 @@ function buildRocketLeagueTeams(
   }
 
   return teams;
-}
-
-function isValidTeam(team: { rocketLeagueRank: string }[]): boolean {
-  const indices = team
-    .map((p) => rankIndex(p.rocketLeagueRank))
-    .filter((x) => x >= 0);
-
-  if (indices.length !== team.length) return false;
-
-  const min = Math.min(...indices);
-  const max = Math.max(...indices);
-  return max - min <= 1;
-}
-
-function findPair(players: { id: string; rocketLeagueRank: string }[]) {
-  for (let a = 0; a < players.length; a += 1) {
-    for (let b = a + 1; b < players.length; b += 1) {
-      const team = [players[a], players[b]];
-      if (isValidTeam(team)) return team;
-    }
-  }
-  return null;
-}
-
-function findTrio(players: { id: string; rocketLeagueRank: string }[]) {
-  for (let a = 0; a < players.length; a += 1) {
-    for (let b = a + 1; b < players.length; b += 1) {
-      for (let c = b + 1; c < players.length; c += 1) {
-        const team = [players[a], players[b], players[c]];
-        if (isValidTeam(team)) return team;
-      }
-    }
-  }
-  return null;
 }
 
 function teamSizeFromLock(
@@ -176,7 +178,6 @@ export async function generateMix(formData: FormData) {
   const game = gameFrom(formData.get("game"));
   if (!game) redirect("/dashboard");
 
-  // Vérifie si admin online
   const onlineAdminsCount = await db.user.count({
     where: {
       isOnline: true,
@@ -186,16 +187,12 @@ export async function generateMix(formData: FormData) {
     },
   });
 
-  // Lock par jeu (PK = game)
   const lock = await db.mixGenerationLock.findUnique({
     where: { game },
     select: { selectedUserId: true, rocketLeagueTeamSize: true },
   });
 
-  // Autorisation :
-  // - si lock.selectedUserId existe => seul selectedUserId peut générer
-  // - sinon si admin online => interdit (forcer sélection)
-  // - sinon (0 admin online) => autoriser un player MAIS seulement s’il est dans la file du jeu
+  // Auth rules
   if (lock?.selectedUserId) {
     if (lock.selectedUserId !== sessionUser.id) {
       redirectToGame(game, "?error=locked");
@@ -208,7 +205,6 @@ export async function generateMix(formData: FormData) {
     const me = await db.user.findUnique({
       where: { id: sessionUser.id },
       select: {
-        id: true,
         isAvailableForWarzoneMix: true,
         isAvailableForRocketLeagueMix: true,
       },
@@ -239,8 +235,9 @@ export async function generateMix(formData: FormData) {
         orderBy: { createdAt: "asc" },
       });
 
+      // ✅ IMPORTANT: temp players filtrés WARZONE
       const tempPlayers = await db.tempPlayer.findMany({
-        where: { isAvailableForMix: true },
+        where: { game: "WARZONE", isAvailableForMix: true },
         select: { id: true },
         orderBy: { createdAt: "asc" },
       });
@@ -252,9 +249,7 @@ export async function generateMix(formData: FormData) {
 
       const teamSizes = getTeamSizesWarzone(pool.length);
       if (!teamSizes) redirectToGame(game, "?error=invalid_count");
-
-      // ✅ TS fix: teamSizes non-null après le check
-      const sizes = teamSizes as number[];
+      const sizes = teamSizes; // non-null
 
       const shuffled = shuffle(pool);
 
@@ -268,7 +263,6 @@ export async function generateMix(formData: FormData) {
         },
       });
 
-      // entries (bulk)
       if (shuffled.length > 0) {
         await db.mixSessionPlayer.createMany({
           data: shuffled.map((p) => ({
@@ -280,7 +274,6 @@ export async function generateMix(formData: FormData) {
         });
       }
 
-      // teams
       let cursor = 0;
       for (let idx = 0; idx < sizes.length; idx += 1) {
         const size = sizes[idx];
@@ -299,13 +292,8 @@ export async function generateMix(formData: FormData) {
             })),
           });
 
-          // status ASSIGNED
-          const userIds = chunk
-            .filter((p) => p.kind === "USER")
-            .map((p) => p.id);
-          const tempIds = chunk
-            .filter((p) => p.kind === "TEMP")
-            .map((p) => p.id);
+          const userIds = chunk.filter((p) => p.kind === "USER").map((p) => p.id);
+          const tempIds = chunk.filter((p) => p.kind === "TEMP").map((p) => p.id);
 
           if (userIds.length > 0) {
             await db.mixSessionPlayer.updateMany({
@@ -329,16 +317,11 @@ export async function generateMix(formData: FormData) {
     }
 
     // =========================
-    // ROCKET LEAGUE (Option B strict 2v2 / 3v3 via lock)
+    // ROCKET LEAGUE (Option B strict + invités RL inclus)
     // =========================
-
     const requiredTeamSize = teamSizeFromLock(lock?.rocketLeagueTeamSize);
-    if (!requiredTeamSize) {
-      redirectToGame(game, "?error=no_team_size");
-    }
-
-    // ✅ TS fix: on fige un type non-null
-    const rlTeamSize = requiredTeamSize as 2 | 3;
+    if (!requiredTeamSize) redirectToGame(game, "?error=no_team_size");
+    const rlTeamSize = requiredTeamSize; // non-null
 
     const users = await db.user.findMany({
       where: {
@@ -346,37 +329,41 @@ export async function generateMix(formData: FormData) {
         registrationStatus: "APPROVED",
         isAvailableForRocketLeagueMix: true,
       },
-      select: {
-        id: true,
-        rocketLeagueRank: true,
-      },
+      select: { id: true, rocketLeagueRank: true },
       orderBy: { createdAt: "asc" },
     });
 
-    if (users.length < rlTeamSize) {
-      redirectToGame(game, "?error=invalid_count");
-    }
+    // ✅ IMPORTANT: temp players filtrés ROCKET_LEAGUE
+    const tempPlayers = await db.tempPlayer.findMany({
+      where: { game: "ROCKET_LEAGUE", isAvailableForMix: true },
+      select: { id: true, rocketLeagueRank: true },
+      orderBy: { createdAt: "asc" },
+    });
 
-    if (users.some((u) => !u.rocketLeagueRank)) {
-      redirectToGame(game, "?error=rank_missing");
-    }
+    const pool = [
+      ...users.map((u) => ({
+        kind: "USER" as const,
+        id: u.id,
+        key: `USER:${u.id}`,
+        rocketLeagueRank: u.rocketLeagueRank,
+      })),
+      ...tempPlayers.map((t) => ({
+        kind: "TEMP" as const,
+        id: t.id,
+        key: `TEMP:${t.id}`,
+        rocketLeagueRank: t.rocketLeagueRank,
+      })),
+    ];
 
-    // strict divisible
-    if (users.length % rlTeamSize !== 0) {
-      redirectToGame(game, "?error=invalid_count");
-    }
+    if (pool.length < rlTeamSize) redirectToGame(game, "?error=invalid_count");
+    if (pool.some((p) => !p.rocketLeagueRank)) redirectToGame(game, "?error=rank_missing");
+    if (pool.length % rlTeamSize !== 0) redirectToGame(game, "?error=invalid_count");
 
     const teams = buildRocketLeagueTeams(
-      users.map((u) => ({ id: u.id, rocketLeagueRank: u.rocketLeagueRank! })),
+      pool.map((p) => ({ key: p.key, rocketLeagueRank: p.rocketLeagueRank! })),
       rlTeamSize,
     );
-
-    if (!teams) {
-      redirectToGame(game, "?error=rank_gap");
-    }
-
-    // ✅ TS: non-null après check
-    const rlTeams = teams as { id: string; rocketLeagueRank: string }[][];
+    if (!teams) redirectToGame(game, "?error=rank_gap");
 
     const session = await db.mixSession.create({
       data: {
@@ -389,32 +376,49 @@ export async function generateMix(formData: FormData) {
       },
     });
 
-    // entries (bulk)
-    if (users.length > 0) {
-      await db.mixSessionPlayer.createMany({
-        data: users.map((u) => ({
-          sessionId: session.id,
-          userId: u.id,
-          status: "WAITING",
-        })),
-      });
-    }
+    // entries (bulk) users + temp
+    await db.mixSessionPlayer.createMany({
+      data: pool.map((p) => ({
+        sessionId: session.id,
+        userId: p.kind === "USER" ? p.id : null,
+        tempPlayerId: p.kind === "TEMP" ? p.id : null,
+        status: "WAITING",
+      })),
+    });
 
     // teams
-    for (let idx = 0; idx < rlTeams.length; idx += 1) {
+    for (let idx = 0; idx < teams.length; idx += 1) {
       const team = await db.team.create({
         data: { sessionId: session.id, teamNumber: idx + 1 },
       });
 
-      const ids = rlTeams[idx].map((p) => p.id);
+      const keys = teams[idx].map((x) => x.key);
 
-      if (ids.length > 0) {
-        await db.teamMember.createMany({
-          data: ids.map((id) => ({ teamId: team.id, userId: id })),
-        });
+      const members = keys
+        .map((k) => pool.find((p) => p.key === k))
+        .filter(Boolean) as typeof pool;
 
+      await db.teamMember.createMany({
+        data: members.map((m) => ({
+          teamId: team.id,
+          userId: m.kind === "USER" ? m.id : null,
+          tempPlayerId: m.kind === "TEMP" ? m.id : null,
+        })),
+      });
+
+      const userIds = members.filter((m) => m.kind === "USER").map((m) => m.id);
+      const tempIds = members.filter((m) => m.kind === "TEMP").map((m) => m.id);
+
+      if (userIds.length > 0) {
         await db.mixSessionPlayer.updateMany({
-          where: { sessionId: session.id, userId: { in: ids } },
+          where: { sessionId: session.id, userId: { in: userIds } },
+          data: { status: "ASSIGNED", assignedAt: new Date() },
+        });
+      }
+
+      if (tempIds.length > 0) {
+        await db.mixSessionPlayer.updateMany({
+          where: { sessionId: session.id, tempPlayerId: { in: tempIds } },
           data: { status: "ASSIGNED", assignedAt: new Date() },
         });
       }

@@ -37,7 +37,7 @@ export default async function AdminRocketLeagueMixPage({
     success?: string;
     lock_set?: string;
     lock_cleared?: string;
-    added?: string; // ✅ pour l’invité
+    added?: string;
     session?: string;
   }>;
 }) {
@@ -90,7 +90,20 @@ export default async function AdminRocketLeagueMixPage({
     orderBy: { displayName: "asc" },
   });
 
-  const totalPoolCount = poolUsers.length;
+  // ✅ IMPORTANT: invités filtrés par jeu
+  const tempPlayersRL = await db.tempPlayer.findMany({
+    where: { game: "ROCKET_LEAGUE", isAvailableForMix: true },
+    select: {
+      id: true,
+      nickname: true,
+      note: true,
+      rocketLeagueRank: true,
+      createdAt: true,
+    },
+    orderBy: { nickname: "asc" },
+  });
+
+  const totalPoolCount = poolUsers.length; // (si tu veux inclure invités => totalPoolCount = poolUsers.length + tempPlayersRL.length)
 
   const canCurrentAdminGenerate =
     !!lock?.selectedUserId && lock.selectedUserId === admin.id;
@@ -104,7 +117,6 @@ export default async function AdminRocketLeagueMixPage({
       ? totalPoolCount % 2 === 0
       : totalPoolCount % 3 === 0);
 
-  // optionnel : dernière session RL
   const latestSession = sessionId
     ? await db.mixSession.findUnique({
         where: { id: sessionId },
@@ -127,11 +139,11 @@ export default async function AdminRocketLeagueMixPage({
             Rocket League Mix
           </h2>
           <p className="neon-text-muted mt-3 max-w-3xl text-sm leading-6 md:text-base">
-            Génération d’équipes Rocket League en 2v2 ou 3v3, avec contrainte de
-            rang.
+            Génération d’équipes Rocket League en 2v2 ou 3v3, avec contrainte de rang.
           </p>
         </div>
 
+        {/* feedback */}
         {errorMessage ? (
           <div className="neon-card p-5">
             <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
@@ -170,7 +182,7 @@ export default async function AdminRocketLeagueMixPage({
           </div>
         ) : null}
 
-        {/* Contrôle générateur */}
+        {/* contrôle générateur */}
         <div className="neon-card p-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
@@ -247,7 +259,7 @@ export default async function AdminRocketLeagueMixPage({
           </div>
         </div>
 
-        {/* ✅ Card Invité (même style que Warzone) */}
+        {/* invités RL */}
         <div className="neon-card p-4">
           <div className="flex flex-col gap-3">
             <div>
@@ -255,18 +267,16 @@ export default async function AdminRocketLeagueMixPage({
                 Ajouter un joueur temporaire
               </p>
               <h3 className="mt-1 text-base font-bold text-white">
-                Joueur invité sans compte
+                Joueur invité (Rocket League)
               </h3>
               <p className="neon-text-muted mt-1 text-xs leading-5">
-                ⚠️ Techniquement, les invités (TempPlayer) sont globaux dans la DB
-                et servent surtout au pool Warzone. Cette card existe ici pour
-                garder la même UX.
+                Cet invité sera ajouté UNIQUEMENT au pool Rocket League.
               </p>
             </div>
 
             <form
               action={createTempPlayer}
-              className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+              className="grid gap-2 sm:grid-cols-[1fr_1fr_180px_auto]"
             >
               <input type="hidden" name="game" value="ROCKET_LEAGUE" />
 
@@ -283,6 +293,23 @@ export default async function AdminRocketLeagueMixPage({
                 placeholder="Note optionnelle"
                 className="w-full px-3 py-2.5 text-sm"
               />
+
+              <select
+                name="rocketLeagueRank"
+                defaultValue=""
+                className="w-full px-3 py-2.5 text-sm"
+              >
+                <option value="">Rang ? (optionnel)</option>
+                <option value="BRONZE">Bronze</option>
+                <option value="SILVER">Argent</option>
+                <option value="GOLD">Or</option>
+                <option value="PLATINUM">Platine</option>
+                <option value="DIAMOND">Diamant</option>
+                <option value="CHAMPION">Champion</option>
+                <option value="GRAND_CHAMPION">Grand Champion</option>
+                <option value="SSL">SSL</option>
+              </select>
+
               <button
                 type="submit"
                 className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]"
@@ -293,7 +320,7 @@ export default async function AdminRocketLeagueMixPage({
           </div>
         </div>
 
-        {/* Pool + génération */}
+        {/* pool + génération */}
         <div className="neon-card p-5 md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -322,49 +349,56 @@ export default async function AdminRocketLeagueMixPage({
             </form>
           </div>
 
-          {lock?.selectedUser ? (
-            <p className="mt-4 text-sm text-white/80">
-              Admin autorisé :{" "}
-              <span className="font-semibold text-white">
-                {lock.selectedUser.displayName}
-              </span>
-              {lock.selectedUser.username
-                ? ` (@${lock.selectedUser.username})`
-                : ""}
-              .
-              {!canCurrentAdminGenerate
-                ? " Tu ne peux pas générer tant que cette sélection est active."
-                : " Tu peux générer les équipes."}
-            </p>
-          ) : (
-            <p className="mt-4 text-sm text-amber-300">
-              Aucun admin n’est encore sélectionné pour générer Rocket League.
-            </p>
-          )}
-
           <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {poolUsers.length === 0 ? (
               <div className="neon-card-soft p-4">
-                <p className="neon-text-muted text-sm">
-                  Aucun joueur dans le pool.
-                </p>
+                <p className="neon-text-muted text-sm">Aucun joueur dans le pool.</p>
               </div>
             ) : (
               poolUsers.map((p) => (
                 <div key={p.id} className="neon-card-soft p-3">
-                  <h4 className="truncate text-sm font-bold text-white">
-                    {p.displayName}
-                  </h4>
-                  <p className="neon-text-muted mt-1 truncate text-[11px]">
-                    @{p.username}
-                  </p>
+                  <h4 className="truncate text-sm font-bold text-white">{p.displayName}</h4>
+                  <p className="neon-text-muted mt-1 truncate text-[11px]">@{p.username}</p>
                   <p className="neon-text-muted mt-2 truncate text-[11px]">
-                    Rang :{" "}
-                    <span className="text-white">{p.rocketLeagueRank ?? "?"}</span>
+                    Rang : <span className="text-white">{p.rocketLeagueRank ?? "?"}</span>
                   </p>
                 </div>
               ))
             )}
+          </div>
+
+          {/* ✅ liste invités RL */}
+          <div className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+              Invités Rocket League
+            </p>
+
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {tempPlayersRL.length === 0 ? (
+                <div className="neon-card-soft p-4">
+                  <p className="neon-text-muted text-sm">Aucun invité Rocket League.</p>
+                </div>
+              ) : (
+                tempPlayersRL.map((t) => (
+                  <div key={t.id} className="neon-card-soft p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="truncate text-sm font-bold text-white">{t.nickname}</h4>
+                      <span className="neon-badge text-[10px]">INVITÉ</span>
+                    </div>
+
+                    <p className="neon-text-muted mt-2 truncate text-[11px]">
+                      Rang : <span className="text-white">{t.rocketLeagueRank ?? "?"}</span>
+                    </p>
+
+                    {t.note ? (
+                      <p className="neon-text-muted mt-1 truncate text-[11px]">
+                        Note : <span className="text-white">{t.note}</span>
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {latestSession ? (

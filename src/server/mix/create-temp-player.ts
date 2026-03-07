@@ -7,10 +7,22 @@ import { requireAdmin } from "@/server/auth/session";
 
 type MixGame = "WARZONE" | "ROCKET_LEAGUE";
 
+const RL_RANKS = [
+  "BRONZE",
+  "SILVER",
+  "GOLD",
+  "PLATINUM",
+  "DIAMOND",
+  "CHAMPION",
+  "GRAND_CHAMPION",
+  "SSL",
+] as const;
+
 const createTempPlayerSchema = z.object({
-  game: z.enum(["WARZONE", "ROCKET_LEAGUE"]).optional(),
+  game: z.enum(["WARZONE", "ROCKET_LEAGUE"]).default("WARZONE"),
   nickname: z.string().trim().min(2).max(40),
   note: z.string().trim().max(200).optional(),
+  rocketLeagueRank: z.enum(RL_RANKS).optional(),
 });
 
 function isNextRedirectError(error: unknown) {
@@ -24,46 +36,52 @@ function isNextRedirectError(error: unknown) {
 }
 
 function backTo(game: MixGame) {
-  return game === "ROCKET_LEAGUE"
-    ? "/admin/mix/rocket-league"
-    : "/admin/mix/warzone";
+  return game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
 }
 
 export async function createTempPlayer(formData: FormData) {
   const admin = await requireAdmin();
   if (!admin) redirect("/dashboard");
 
+  const rawGame = String(formData.get("game") ?? "WARZONE").trim().toUpperCase();
+  const game: MixGame = rawGame === "ROCKET_LEAGUE" ? "ROCKET_LEAGUE" : "WARZONE";
+
   const parsed = createTempPlayerSchema.safeParse({
-    game: String(formData.get("game") ?? "").trim().toUpperCase() || undefined,
+    game,
     nickname: String(formData.get("nickname") ?? ""),
     note: String(formData.get("note") ?? ""),
+    rocketLeagueRank:
+      String(formData.get("rocketLeagueRank") ?? "").trim().toUpperCase() || undefined,
   });
 
-  // ✅ si pas de game, on retombe sur WARZONE par défaut
-  const game: MixGame = parsed.success
-    ? (parsed.data.game ?? "WARZONE")
-    : "WARZONE";
-
   if (!parsed.success) {
-    redirect(`${backTo(game)}?error=server`);
+    redirect(`${backTo(game)}?error=validation`);
   }
 
-  const nickname = parsed.data.nickname.trim();
+  const { nickname } = parsed.data;
   const note = parsed.data.note?.trim() || null;
 
+  // ✅ IMPORTANT: si les invités RL participent au mix RL, on impose le rang
+  if (game === "ROCKET_LEAGUE" && !parsed.data.rocketLeagueRank) {
+    redirect(`${backTo(game)}?error=rank_missing`);
+  }
+
   try {
+    // Doublon temp player uniquement dans le même game ET dispo
     const existingTempPlayer = await db.tempPlayer.findFirst({
       where: {
-        nickname: { equals: nickname, mode: "insensitive" },
+        game,
         isAvailableForMix: true,
+        nickname: { equals: nickname, mode: "insensitive" },
       },
       select: { id: true },
     });
 
     if (existingTempPlayer) {
-      redirect(`${backTo(game)}?error=server`);
+      redirect(`${backTo(game)}?error=nickname_taken`);
     }
 
+    // Collision avec un user existant (global)
     const existingUser = await db.user.findFirst({
       where: {
         OR: [
@@ -76,14 +94,16 @@ export async function createTempPlayer(formData: FormData) {
     });
 
     if (existingUser) {
-      redirect(`${backTo(game)}?error=server`);
+      redirect(`${backTo(game)}?error=nickname_taken`);
     }
 
     await db.tempPlayer.create({
       data: {
-        nickname,
+        game,
+        nickname: nickname.trim(),
         note,
         isAvailableForMix: true,
+        rocketLeagueRank: game === "ROCKET_LEAGUE" ? parsed.data.rocketLeagueRank! : null,
         createdById: admin.id,
       },
     });

@@ -22,6 +22,10 @@
   --shadow-cyan: 0 0 24px rgba(57, 240, 255, 0.15);
   --shadow-green: 0 0 24px rgba(66, 255, 176, 0.14);
   --shadow-pink: 0 0 28px rgba(255, 79, 216, 0.16);
+
+  /* Animations */
+  --bg-pan-duration: 18s;
+  --rgb-spin-duration: 7s;
 }
 
 * {
@@ -40,6 +44,8 @@ body {
 body {
   margin: 0;
   color: var(--text);
+
+  /* ✅ Base background (statique) */
   background:
     radial-gradient(circle at 10% 18%, rgba(30, 167, 255, 0.22), transparent 24%),
     radial-gradient(circle at 82% 16%, rgba(255, 79, 216, 0.18), transparent 22%),
@@ -47,6 +53,7 @@ body {
     radial-gradient(circle at 86% 78%, rgba(139, 93, 255, 0.16), transparent 24%),
     radial-gradient(circle at 50% 50%, rgba(57, 240, 255, 0.03), transparent 45%),
     linear-gradient(180deg, #020308 0%, #040711 35%, #060b15 65%, #020308 100%);
+
   font-family:
     Inter,
     ui-sans-serif,
@@ -55,9 +62,41 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+/* ✅ Background animé “mobile” : on anime via pseudo-layer */
+@keyframes bg-pan {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(-1.2%, 1.1%, 0) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+    opacity: 0.85;
+  }
+}
+
+@keyframes grid-drift {
+  0% {
+    background-position: 0 0, 0 0;
+    opacity: 0.28;
+  }
+  50% {
+    background-position: 120px 60px, 60px 120px;
+    opacity: 0.38;
+  }
+  100% {
+    background-position: 0 0, 0 0;
+    opacity: 0.28;
+  }
 }
 
 a {
@@ -115,20 +154,24 @@ button {
   min-height: 100vh;
 }
 
+/* ✅ Halos animés (derrière tout) */
 .page-wrap::before {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -10%;
   pointer-events: none;
   background:
-    radial-gradient(circle at 12% 20%, rgba(30, 167, 255, 0.14), transparent 18%),
-    radial-gradient(circle at 86% 18%, rgba(255, 79, 216, 0.12), transparent 18%),
-    radial-gradient(circle at 14% 84%, rgba(66, 255, 176, 0.1), transparent 18%),
-    radial-gradient(circle at 88% 82%, rgba(139, 93, 255, 0.12), transparent 18%);
-  filter: blur(30px);
+    radial-gradient(circle at 12% 20%, rgba(30, 167, 255, 0.16), transparent 18%),
+    radial-gradient(circle at 86% 18%, rgba(255, 79, 216, 0.14), transparent 18%),
+    radial-gradient(circle at 14% 84%, rgba(66, 255, 176, 0.12), transparent 18%),
+    radial-gradient(circle at 88% 82%, rgba(139, 93, 255, 0.14), transparent 18%);
+  filter: blur(34px);
   z-index: 0;
+  animation: bg-pan var(--bg-pan-duration) ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
+/* ✅ Grille animée (super léger) */
 .page-wrap::after {
   content: "";
   position: fixed;
@@ -140,6 +183,8 @@ button {
   background-size: 42px 42px;
   opacity: 0.35;
   z-index: 0;
+  animation: grid-drift 22s ease-in-out infinite;
+  will-change: background-position, opacity;
 }
 
 .content-layer {
@@ -147,13 +192,23 @@ button {
   z-index: 1;
 }
 
+/* ===========================
+   ✅ Cards : bordure RGB animée
+   =========================== */
+@keyframes rgb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .neon-card {
   position: relative;
   overflow: hidden;
   border-radius: 24px;
+
+  /* on laisse ton style de base */
   border: 1px solid rgba(100, 125, 255, 0.16);
-  background:
-    linear-gradient(180deg, rgba(11, 15, 30, 0.84), rgba(7, 10, 20, 0.9));
+  background: linear-gradient(180deg, rgba(11, 15, 30, 0.84), rgba(7, 10, 20, 0.9));
   backdrop-filter: blur(14px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
@@ -161,40 +216,65 @@ button {
     0 0 22px rgba(30, 167, 255, 0.06);
 }
 
+/* ✅ Layer glow animée (sous le contenu, au dessus du fond) */
 .neon-card::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -2px;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(30, 167, 255, 0.08), transparent 24%),
-    radial-gradient(circle at 100% 0%, rgba(255, 79, 216, 0.06), transparent 24%),
-    radial-gradient(circle at 0% 100%, rgba(66, 255, 176, 0.05), transparent 24%),
-    radial-gradient(circle at 100% 100%, rgba(139, 93, 255, 0.06), transparent 24%);
+
+  background: conic-gradient(
+    from 0deg,
+    rgba(30, 167, 255, 0.95),
+    rgba(57, 240, 255, 0.9),
+    rgba(66, 255, 176, 0.85),
+    rgba(255, 79, 216, 0.9),
+    rgba(139, 93, 255, 0.9),
+    rgba(30, 167, 255, 0.95)
+  );
+
+  filter: blur(10px);
+  opacity: 0.45;
+  animation: rgb-spin var(--rgb-spin-duration) linear infinite;
+  will-change: transform;
+  z-index: 0;
 }
 
+/* ✅ Bordure “découpée” par masque (ton effet existant, mais animé) */
 .neon-card::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(30, 167, 255, 0.42),
-      rgba(57, 240, 255, 0.18),
-      rgba(255, 79, 216, 0.35),
-      rgba(139, 93, 255, 0.22)
-    );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
+
+  background: conic-gradient(
+    from 0deg,
+    rgba(30, 167, 255, 0.55),
+    rgba(57, 240, 255, 0.25),
+    rgba(66, 255, 176, 0.35),
+    rgba(255, 79, 216, 0.45),
+    rgba(139, 93, 255, 0.3),
+    rgba(30, 167, 255, 0.55)
+  );
+
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
+
   pointer-events: none;
+  animation: rgb-spin calc(var(--rgb-spin-duration) * 1.2) linear infinite;
+  will-change: transform;
+  z-index: 1;
 }
 
+/* ✅ remet le contenu au-dessus des effets */
+.neon-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Soft cards (on ne met pas le rgb dessus, sinon ça fait trop) */
 .neon-card-soft {
   border-radius: 20px;
   border: 1px solid rgba(100, 125, 255, 0.14);
@@ -247,13 +327,12 @@ button {
 .neon-button {
   border: 1px solid rgba(57, 240, 255, 0.28);
   border-radius: 16px;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(30, 167, 255, 0.18),
-      rgba(57, 240, 255, 0.12),
-      rgba(255, 79, 216, 0.14)
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(30, 167, 255, 0.18),
+    rgba(57, 240, 255, 0.12),
+    rgba(255, 79, 216, 0.14)
+  );
   color: white;
   font-weight: 700;
   box-shadow:
@@ -335,4 +414,33 @@ button {
     rgba(255, 79, 216, 0.45)
   );
   border-radius: 999px;
+}
+
+/* ===========================
+   ✅ Mobile tuning (plus doux)
+   =========================== */
+@media (max-width: 640px) {
+  :root {
+    --bg-pan-duration: 14s;
+    --rgb-spin-duration: 6.5s;
+  }
+
+  .page-wrap::after {
+    opacity: 0.28;
+  }
+
+  .neon-card::before {
+    opacity: 0.38;
+    filter: blur(11px);
+  }
+}
+
+/* Accessibilité : si l’utilisateur préfère réduire les animations */
+@media (prefers-reduced-motion: reduce) {
+  .page-wrap::before,
+  .page-wrap::after,
+  .neon-card::before,
+  .neon-card::after {
+    animation: none !important;
+  }
 }

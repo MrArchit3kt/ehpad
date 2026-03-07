@@ -287,16 +287,24 @@ model User {
 }
 
 model TempPlayer {
-  id                String  @id @default(cuid())
-  nickname          String
-  note              String? @db.Text
+  id       String @id @default(cuid())
+  nickname String
+  note     String? @db.Text
+
+  // ✅ Le jeu auquel appartient l'invité
+  game MixGame @default(WARZONE)
+
+  // ✅ dispo dans la file du jeu (plus de flag global)
   isAvailableForMix Boolean @default(true)
 
+  // ✅ pour Rocket League : rang nécessaire si tu veux l’utiliser dans les teams RL
+  rocketLeagueRank RocketLeagueRank?
+
   createdById String?
-  createdBy   User?   @relation("CreatedTempPlayers", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy   User? @relation("CreatedTempPlayers", fields: [createdById], references: [id], onDelete: SetNull)
 
   linkedUserId String?
-  linkedUser   User?   @relation("LinkedTempPlayers", fields: [linkedUserId], references: [id], onDelete: SetNull)
+  linkedUser   User? @relation("LinkedTempPlayers", fields: [linkedUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -304,6 +312,7 @@ model TempPlayer {
   mixEntries      MixSessionPlayer[]
   teamMemberships TeamMember[]
 
+  @@index([game])
   @@index([isAvailableForMix])
   @@index([createdById])
   @@index([linkedUserId])

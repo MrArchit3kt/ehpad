@@ -93,8 +93,9 @@ export default async function AdminMixWarzonePage({
     orderBy: { displayName: "asc" },
   });
 
+  // ✅ IMPORTANT: temp players filtrés par jeu
   const availableTempPlayers = await db.tempPlayer.findMany({
-    where: { isAvailableForMix: true },
+    where: { game: "WARZONE", isAvailableForMix: true },
     select: {
       id: true,
       nickname: true,
@@ -220,7 +221,50 @@ export default async function AdminMixWarzonePage({
           </p>
         </div>
 
+        {/* feedback */}
+        {errorMessage ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
+          </div>
+        ) : null}
+        {isSuccess ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-emerald-400">
+              Équipes générées avec succès.
+            </p>
+          </div>
+        ) : null}
+        {isRemoved ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-amber-300">
+              Joueur retiré du pool avec succès.
+            </p>
+          </div>
+        ) : null}
+        {isAdded ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-emerald-300">
+              Joueur ajouté au pool avec succès.
+            </p>
+          </div>
+        ) : null}
+        {isLockSet ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-cyan-300">
+              Admin autorisé à générer mis à jour avec succès.
+            </p>
+          </div>
+        ) : null}
+        {isLockCleared ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-amber-300">
+              Sélection de l’admin générateur retirée.
+            </p>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 xl:grid-cols-2">
+          {/* lock admin */}
           <div className="neon-card p-4">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
@@ -269,6 +313,7 @@ export default async function AdminMixWarzonePage({
             </div>
           </div>
 
+          {/* temp player */}
           <div className="neon-card p-4">
             <div className="flex flex-col gap-3">
               <div>
@@ -277,13 +322,12 @@ export default async function AdminMixWarzonePage({
                 </p>
                 <h3 className="mt-1 text-base font-bold text-white">Joueur invité sans compte</h3>
                 <p className="neon-text-muted mt-1 text-xs leading-5">
-                  Ajoute un pseudo temporaire directement dans le pool.
+                  Ajoute un pseudo temporaire directement dans le pool Warzone.
                 </p>
               </div>
 
               <form action={createTempPlayer} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                 <input type="hidden" name="game" value="WARZONE" />
-
                 <input
                   name="nickname"
                   type="text"
@@ -305,6 +349,7 @@ export default async function AdminMixWarzonePage({
           </div>
         </div>
 
+        {/* pool */}
         <div className="neon-card p-5 md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
@@ -349,28 +394,6 @@ export default async function AdminMixWarzonePage({
             </div>
           </div>
 
-          {mixLock?.selectedUser ? (
-            <p className="mt-4 text-sm text-white/80">
-              Admin autorisé :{" "}
-              <span className="font-semibold text-white">{mixLock.selectedUser.displayName}</span>
-              {mixLock.selectedUser.username ? ` (@${mixLock.selectedUser.username})` : ""}.
-              {!canCurrentAdminGenerate
-                ? " Tu ne peux pas générer tant que cette sélection est active."
-                : " Tu peux générer les équipes."}
-            </p>
-          ) : (
-            <p className="mt-4 text-sm text-amber-300">
-              Aucun admin n’est encore sélectionné pour générer les équipes.
-            </p>
-          )}
-
-          {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p> : null}
-          {isSuccess ? <p className="mt-4 text-sm font-medium text-emerald-400">Équipes générées avec succès.</p> : null}
-          {isRemoved ? <p className="mt-4 text-sm font-medium text-amber-300">Joueur retiré du pool avec succès.</p> : null}
-          {isAdded ? <p className="mt-4 text-sm font-medium text-emerald-300">Joueur ajouté au pool avec succès.</p> : null}
-          {isLockSet ? <p className="mt-4 text-sm font-medium text-cyan-300">Admin autorisé à générer mis à jour avec succès.</p> : null}
-          {isLockCleared ? <p className="mt-4 text-sm font-medium text-amber-300">Sélection de l’admin générateur retirée.</p> : null}
-
           <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {totalPoolCount === 0 ? (
               <div className="neon-card-soft p-4">
@@ -408,7 +431,7 @@ export default async function AdminMixWarzonePage({
                       <span className="neon-badge text-[10px]">INVITÉ</span>
                     </div>
 
-                    <p className="neon-text-muted mt-2 text-[11px]">Joueur temporaire sans compte</p>
+                    <p className="neon-text-muted mt-2 text-[11px]">Invité Warzone</p>
 
                     {player.note ? (
                       <p className="neon-text-muted mt-1 truncate text-[11px]">
@@ -432,6 +455,7 @@ export default async function AdminMixWarzonePage({
           </div>
         </div>
 
+        {/* candidates */}
         <div className="neon-card p-5 md:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
             Ajouter un joueur existant
@@ -472,6 +496,7 @@ export default async function AdminMixWarzonePage({
           </div>
         </div>
 
+        {/* session */}
         {latestSession ? (
           <div className="neon-card p-5 md:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
