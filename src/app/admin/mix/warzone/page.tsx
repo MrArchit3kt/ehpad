@@ -31,13 +31,11 @@ function getTeamSizesPreview(total: number): number[] | null {
 
   for (let teamsOf4 = Math.floor(total / 4); teamsOf4 >= 0; teamsOf4 -= 1) {
     const remainder = total - teamsOf4 * 4;
-
     if (remainder % 3 === 0) {
       const teamsOf3 = remainder / 3;
       return [...Array(teamsOf4).fill(4), ...Array(teamsOf3).fill(3)];
     }
   }
-
   return null;
 }
 
@@ -45,13 +43,12 @@ function formatTeamSizesPreview(total: number) {
   const sizes = getTeamSizesPreview(total);
   if (!sizes) return "Impossible";
 
-  const teamsOf4 = sizes.filter((size) => size === 4).length;
-  const teamsOf3 = sizes.filter((size) => size === 3).length;
+  const teamsOf4 = sizes.filter((s) => s === 4).length;
+  const teamsOf3 = sizes.filter((s) => s === 3).length;
 
   const parts: string[] = [];
   if (teamsOf4 > 0) parts.push(`${teamsOf4}x4`);
   if (teamsOf3 > 0) parts.push(`${teamsOf3}x3`);
-
   return parts.join(" + ");
 }
 
@@ -107,16 +104,14 @@ export default async function AdminMixWarzonePage({
     orderBy: { nickname: "asc" },
   });
 
-  const availableUserIds = availableUsers.map((player) => player.id);
+  const availableUserIds = availableUsers.map((p) => p.id);
 
   const poolCandidates = await db.user.findMany({
     where: {
       status: "ACTIVE",
       registrationStatus: "APPROVED",
       isAvailableForWarzoneMix: false,
-      id: {
-        notIn: availableUserIds.length > 0 ? availableUserIds : undefined,
-      },
+      id: { notIn: availableUserIds.length > 0 ? availableUserIds : undefined },
     },
     select: {
       id: true,
@@ -135,12 +130,7 @@ export default async function AdminMixWarzonePage({
       registrationStatus: "APPROVED",
       role: { in: ["ADMIN", "SUPER_ADMIN"] },
     },
-    select: {
-      id: true,
-      displayName: true,
-      username: true,
-      role: true,
-    },
+    select: { id: true, displayName: true, username: true, role: true },
     orderBy: { displayName: "asc" },
   });
 
@@ -150,12 +140,7 @@ export default async function AdminMixWarzonePage({
       game: true,
       selectedUserId: true,
       selectedUser: {
-        select: {
-          id: true,
-          displayName: true,
-          username: true,
-          role: true,
-        },
+        select: { id: true, displayName: true, username: true, role: true },
       },
     },
   });
@@ -243,9 +228,7 @@ export default async function AdminMixWarzonePage({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                     Admin autorisé à générer
                   </p>
-                  <h3 className="mt-1 text-base font-bold text-white">
-                    Contrôle du générateur
-                  </h3>
+                  <h3 className="mt-1 text-base font-bold text-white">Contrôle du générateur</h3>
                   <p className="neon-text-muted mt-1 text-xs leading-5">
                     Un seul admin peut générer les équipes à la fois.
                   </p>
@@ -292,15 +275,15 @@ export default async function AdminMixWarzonePage({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
                   Ajouter un joueur temporaire
                 </p>
-                <h3 className="mt-1 text-base font-bold text-white">
-                  Joueur invité sans compte
-                </h3>
+                <h3 className="mt-1 text-base font-bold text-white">Joueur invité sans compte</h3>
                 <p className="neon-text-muted mt-1 text-xs leading-5">
                   Ajoute un pseudo temporaire directement dans le pool.
                 </p>
               </div>
 
               <form action={createTempPlayer} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <input type="hidden" name="game" value="WARZONE" />
+
                 <input
                   name="nickname"
                   type="text"
@@ -350,9 +333,7 @@ export default async function AdminMixWarzonePage({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-300/75">
                   Répartition
                 </p>
-                <p className="mt-1 text-lg font-black text-white md:text-xl">
-                  {poolDistribution}
-                </p>
+                <p className="mt-1 text-lg font-black text-white md:text-xl">{poolDistribution}</p>
               </div>
 
               <form action={generateMix}>
@@ -371,9 +352,7 @@ export default async function AdminMixWarzonePage({
           {mixLock?.selectedUser ? (
             <p className="mt-4 text-sm text-white/80">
               Admin autorisé :{" "}
-              <span className="font-semibold text-white">
-                {mixLock.selectedUser.displayName}
-              </span>
+              <span className="font-semibold text-white">{mixLock.selectedUser.displayName}</span>
               {mixLock.selectedUser.username ? ` (@${mixLock.selectedUser.username})` : ""}.
               {!canCurrentAdminGenerate
                 ? " Tu ne peux pas générer tant que cette sélection est active."
@@ -385,46 +364,17 @@ export default async function AdminMixWarzonePage({
             </p>
           )}
 
-          {errorMessage ? (
-            <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p>
-          ) : null}
-
-          {isSuccess ? (
-            <p className="mt-4 text-sm font-medium text-emerald-400">
-              Équipes générées avec succès.
-            </p>
-          ) : null}
-
-          {isRemoved ? (
-            <p className="mt-4 text-sm font-medium text-amber-300">
-              Joueur retiré du pool avec succès.
-            </p>
-          ) : null}
-
-          {isAdded ? (
-            <p className="mt-4 text-sm font-medium text-emerald-300">
-              Joueur ajouté au pool avec succès.
-            </p>
-          ) : null}
-
-          {isLockSet ? (
-            <p className="mt-4 text-sm font-medium text-cyan-300">
-              Admin autorisé à générer mis à jour avec succès.
-            </p>
-          ) : null}
-
-          {isLockCleared ? (
-            <p className="mt-4 text-sm font-medium text-amber-300">
-              Sélection de l’admin générateur retirée.
-            </p>
-          ) : null}
+          {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p> : null}
+          {isSuccess ? <p className="mt-4 text-sm font-medium text-emerald-400">Équipes générées avec succès.</p> : null}
+          {isRemoved ? <p className="mt-4 text-sm font-medium text-amber-300">Joueur retiré du pool avec succès.</p> : null}
+          {isAdded ? <p className="mt-4 text-sm font-medium text-emerald-300">Joueur ajouté au pool avec succès.</p> : null}
+          {isLockSet ? <p className="mt-4 text-sm font-medium text-cyan-300">Admin autorisé à générer mis à jour avec succès.</p> : null}
+          {isLockCleared ? <p className="mt-4 text-sm font-medium text-amber-300">Sélection de l’admin générateur retirée.</p> : null}
 
           <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {totalPoolCount === 0 ? (
               <div className="neon-card-soft p-4">
-                <p className="neon-text-muted text-sm">
-                  Aucun joueur disponible pour le moment.
-                </p>
+                <p className="neon-text-muted text-sm">Aucun joueur disponible pour le moment.</p>
               </div>
             ) : (
               <>
@@ -469,6 +419,7 @@ export default async function AdminMixWarzonePage({
                     <div className="mt-2.5">
                       <form action={removePlayerFromPool}>
                         <input type="hidden" name="tempPlayerId" value={player.id} />
+                        <input type="hidden" name="game" value="WARZONE" />
                         <button type="submit" className="neon-button-secondary w-full px-3 py-2 text-xs">
                           Retirer du pool
                         </button>
@@ -542,9 +493,7 @@ export default async function AdminMixWarzonePage({
               {latestSession.teams.map((team) => (
                 <div key={team.id} className="neon-card-soft p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-bold text-white md:text-base">
-                      Team {team.teamNumber}
-                    </h4>
+                    <h4 className="text-sm font-bold text-white md:text-base">Team {team.teamNumber}</h4>
                     <span className="neon-badge text-[10px]">
                       {team.members.length} joueur{team.members.length > 1 ? "s" : ""}
                     </span>
@@ -552,28 +501,16 @@ export default async function AdminMixWarzonePage({
 
                   <div className="mt-2.5 grid gap-2">
                     {team.members.map((member) => {
-                      const label = member.user
-                        ? member.user.displayName
-                        : member.tempPlayer?.nickname ?? "Invité";
-
+                      const label = member.user ? member.user.displayName : member.tempPlayer?.nickname ?? "Invité";
                       const subLabel = member.user ? `@${member.user.username}` : "Joueur temporaire";
-
-                      const warzone = member.user
-                        ? member.user.warzoneUsername
-                        : member.tempPlayer?.note ?? "Invité";
+                      const warzone = member.user ? member.user.warzoneUsername : member.tempPlayer?.note ?? "Invité";
 
                       return (
-                        <div
-                          key={member.id}
-                          className="rounded-xl border border-white/8 bg-white/[0.02] p-2.5"
-                        >
+                        <div key={member.id} className="rounded-xl border border-white/8 bg-white/[0.02] p-2.5">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-xs font-semibold text-white md:text-sm">
-                              {label}
-                            </p>
+                            <p className="truncate text-xs font-semibold text-white md:text-sm">{label}</p>
                             {!member.user ? <span className="neon-badge text-[10px]">INVITÉ</span> : null}
                           </div>
-
                           <p className="neon-text-muted mt-0.5 truncate text-[11px]">{subLabel}</p>
                           <p className="neon-text-muted mt-1 truncate text-[11px]">{warzone}</p>
                         </div>
