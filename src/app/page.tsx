@@ -44,7 +44,7 @@ export default async function HomePage() {
     }),
   ]);
 
-  const homeHeadline = config?.homeHeadline ?? "EHPAD Warzone Squad";
+  const homeHeadline = config?.homeHeadline ?? "AC2N Gaming Squad";
   const homeDescription =
     config?.homeDescription ??
     "Plateforme de gestion de team, mix automatique, événements, modération et organisation complète de la communauté.";

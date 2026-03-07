@@ -141,6 +141,22 @@ enum MixGame {
   ROCKET_LEAGUE
 }
 
+enum RocketLeagueRank {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  CHAMPION
+  GRAND_CHAMPION
+  SSL
+}
+
+enum RocketLeagueTeamSize {
+  TWO
+  THREE
+}
+
 model SiteConfig {
   id String @id @default("main")
 
@@ -198,20 +214,25 @@ model User {
   activisionId    String?
   platform        GamePlatform?
   preferredRole   PreferredRole @default(NONE)
+
   discordUsername String?
   discordUserId   String?
   whatsappNumber  String?
-  whatsappOptIn   Boolean       @default(false)
-  micAvailable    Boolean       @default(true)
-  notes           String?
-  isEhpadMember   Boolean       @default(false)
+  whatsappOptIn   Boolean @default(false)
+
+  micAvailable  Boolean @default(true)
+  notes         String?
+  isEhpadMember Boolean @default(false) // champ DB conservé, UI affiche "AC2N"
+
+  // Rocket League
+  rocketLeagueRank RocketLeagueRank?
 
   isOnline Boolean @default(false)
 
-  // ancien flag global (garde-le pour compat, puis retire-le quand tout est migré)
+  // ancien flag global (compat)
   isAvailableForMix Boolean @default(false)
 
-  // nouveaux flags par jeu
+  // flags par jeu
   isAvailableForWarzoneMix      Boolean @default(false)
   isAvailableForRocketLeagueMix Boolean @default(false)
 
@@ -255,7 +276,6 @@ model User {
   tempPlayersCreated TempPlayer[] @relation("CreatedTempPlayers")
   tempPlayersLinked  TempPlayer[] @relation("LinkedTempPlayers")
 
-  // relation inverse du lock multi-jeu
   mixLocksSelected MixGenerationLock[] @relation("MixGenerationLockSelectedUser")
 
   @@index([registrationStatus])
@@ -263,6 +283,7 @@ model User {
   @@index([rejectedById])
   @@index([isAvailableForWarzoneMix])
   @@index([isAvailableForRocketLeagueMix])
+  @@index([rocketLeagueRank])
 }
 
 model TempPlayer {
@@ -466,6 +487,9 @@ model MixSession {
 
   game MixGame @default(WARZONE)
 
+  // Rocket League : stocke le format réellement généré (2v2/3v3)
+  rocketLeagueTeamSize RocketLeagueTeamSize?
+
   allowTeamsOfThree    Boolean @default(false)
   keepRemainderAsBench Boolean @default(true)
 
@@ -555,9 +579,13 @@ model RoleChangeLog {
 }
 
 model MixGenerationLock {
-  game           MixGame  @id
+  game           MixGame @id
   selectedUserId String?
-  updatedAt      DateTime @updatedAt
+
+  // Rocket League : format autorisé (2v2/3v3) pour la génération
+  rocketLeagueTeamSize RocketLeagueTeamSize?
+
+  updatedAt DateTime @default(now()) @updatedAt
 
   selectedUser User? @relation("MixGenerationLockSelectedUser", fields: [selectedUserId], references: [id], onDelete: SetNull)
 

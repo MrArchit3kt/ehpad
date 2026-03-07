@@ -7,18 +7,136 @@ import { requireAuth } from "@/server/auth/session";
 import { db } from "@/lib/prisma";
 import { updateProfile } from "@/server/profil/update-profile";
 import { toggleMixAvailability } from "@/server/mix/toggle-mix-availability";
+import { generateMix } from "@/server/mix/generate-mix";
+
+type MixGame = "WARZONE" | "ROCKET_LEAGUE";
 
 function getErrorMessage(error?: string) {
   switch (error) {
     case "validation":
       return "Le formulaire est invalide. Vérifie les champs.";
     case "server":
-      return "Erreur serveur pendant la sauvegarde. Réessaie.";
+      return "Erreur serveur pendant l’action demandée. Réessaie.";
     case "banned":
       return "Compte banni. Action impossible.";
+
+    // Mix (commun)
+    case "forbidden":
+      return "Action non autorisée.";
+    case "invalid_count":
+      return "Nombre de joueurs invalide pour générer des équipes.";
+
+    // Locks / sélection admin
+    case "locked":
+      return "Un autre générateur est actuellement sélectionné. Tu ne peux pas générer.";
+    case "no_mix_admin":
+      return "Un admin est en ligne : la génération est verrouillée tant qu’un générateur n’est pas sélectionné.";
+
+    // Rocket League
+    case "rank_missing":
+      return "Certains joueurs n’ont pas de rang Rocket League renseigné : génération impossible.";
+    case "rank_gap":
+      return "Impossible de créer des teams Rocket League : écart de rang trop important dans les combinaisons.";
+
     default:
       return null;
   }
+}
+
+function getBadgeClass(active: boolean) {
+  return active
+    ? "inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300"
+    : "inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white/70";
+}
+
+/* ===========================
+   TEAM NAMES (30 + 30)
+   =========================== */
+
+const WARZONE_TEAM_NAMES = [
+  "Les Paras en Pantoufles",
+  "La Squad du Frigo",
+  "Les Snipers du Dimanche",
+  "Les Balles Perdues",
+  "Le Cartel des Pingouins",
+  "Les Moustiques OP",
+  "Les Fantômes du Gulag",
+  "Les Tacticiens Égarés",
+  "Les Croissants Commando",
+  "La Brigade du Tilt",
+  "Les Boucliers en Carton",
+  "Les Ninjas du Lobby",
+  "Les Pixels Vénères",
+  "Les Pépites du Drop",
+  "Les Grenades Poétiques",
+  "La Team Pas Vu Pas Pris",
+  "Les Loups du Toit",
+  "Les Chasseurs de Loadout",
+  "Les Snipers Mal Lunés",
+  "Les Rois du Repli",
+  "Les Caméléons du Smoke",
+  "Les Roquettes du Placard",
+  "Les Croutons Tactiques",
+  "Les Saboteurs Gentils",
+  "Les Dodos du Circle",
+  "Les Pistaches Furtives",
+  "Les Chevaliers du Ping",
+  "La Patrouille du UAV",
+  "Les Chèvres Galactiques",
+  "Les Champs de Mines",
+] as const;
+
+const ROCKET_TEAM_NAMES = [
+  "Les Boost Addicts",
+  "Les Bump Diplomates",
+  "Les Flips de la Chance",
+  "Les Aériens du Dimanche",
+  "Les Dribbleurs Timides",
+  "La Brigade du Backboard",
+  "Les Rotations Fantômes",
+  "Les Cônes Volants",
+  "Les Pivots Électriques",
+  "Les Platinés Pressés",
+  "Les Diamants Distraits",
+  "Les Champions de Salon",
+  "Les SSL du Déni",
+  "Les Boosters Compulsifs",
+  "Les Touches Trop Fortes",
+  "Les Passes Inattendues",
+  "Les Murs Magnétiques",
+  "Les Rebondisseurs Pros",
+  "Les Roues Souriantes",
+  "Les Carrosseries Zen",
+  "Les Balleux Poli(e)s",
+  "Les Ailes en Plastique",
+  "La Team 50/50",
+  "Les Défenseurs Rêveurs",
+  "Les Attaquants Patients",
+  "Les Dunks Respectueux",
+  "Les Double-Taps Discrets",
+  "Les Kickoffs Calmes",
+  "Les Freestylers Sages",
+  "Les Rockets Rigolos",
+] as const;
+
+function hashToIndex(input: string, modulo: number) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return modulo === 0 ? 0 : hash % modulo;
+}
+
+function getTeamDisplayName(params: {
+  game: MixGame;
+  sessionId: string;
+  teamNumber: number;
+}) {
+  const base = `${params.game}:${params.sessionId}:${params.teamNumber}`;
+  if (params.game === "WARZONE") {
+    return WARZONE_TEAM_NAMES[hashToIndex(base, WARZONE_TEAM_NAMES.length)];
+  }
+  return ROCKET_TEAM_NAMES[hashToIndex(base, ROCKET_TEAM_NAMES.length)];
 }
 
 export default async function ProfilePage({
@@ -27,34 +145,30 @@ export default async function ProfilePage({
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const sessionUser = await requireAuth();
-
-  if (!sessionUser) {
-    redirect("/login");
-  }
+  if (!sessionUser) redirect("/login");
 
   const user = await db.user.findUnique({
     where: { id: sessionUser.id },
   });
+  if (!user) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const latestTeamMember = await db.teamMember.findFirst({
+  // ✅ Dernière team WARZONE
+  const latestWarzoneTeamMember = await db.teamMember.findFirst({
     where: {
       userId: user.id,
+      team: {
+        session: {
+          game: "WARZONE",
+        },
+      },
     },
-    orderBy: {
-      addedAt: "desc",
-    },
+    orderBy: { addedAt: "desc" },
     include: {
       team: {
         include: {
           session: true,
           members: {
-            orderBy: {
-              addedAt: "asc",
-            },
+            orderBy: { addedAt: "asc" },
             include: {
               user: {
                 select: {
@@ -63,14 +177,11 @@ export default async function ProfilePage({
                   username: true,
                   warzoneUsername: true,
                   platform: true,
+                  rocketLeagueRank: true,
                 },
               },
               tempPlayer: {
-                select: {
-                  id: true,
-                  nickname: true,
-                  note: true,
-                },
+                select: { id: true, nickname: true, note: true },
               },
             },
           },
@@ -79,18 +190,67 @@ export default async function ProfilePage({
     },
   });
 
-  const currentTeam = latestTeamMember?.team ?? null;
+  // ✅ Dernière team ROCKET LEAGUE
+  const latestRocketTeamMember = await db.teamMember.findFirst({
+    where: {
+      userId: user.id,
+      team: {
+        session: {
+          game: "ROCKET_LEAGUE",
+        },
+      },
+    },
+    orderBy: { addedAt: "desc" },
+    include: {
+      team: {
+        include: {
+          session: true,
+          members: {
+            orderBy: { addedAt: "asc" },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  username: true,
+                  warzoneUsername: true,
+                  platform: true,
+                  rocketLeagueRank: true,
+                },
+              },
+              tempPlayer: {
+                select: { id: true, nickname: true, note: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const warzoneTeam = latestWarzoneTeamMember?.team ?? null;
+  const rocketTeam = latestRocketTeamMember?.team ?? null;
 
   const sp = (await searchParams) ?? {};
   const errorMessage = getErrorMessage(sp.error);
   const isSuccess = sp.success === "1";
 
+  const isInWarzoneQueue = !!user.isAvailableForWarzoneMix;
+  const isInRocketQueue = !!user.isAvailableForRocketLeagueMix;
+
+  const activeQueueLabel = isInWarzoneQueue
+    ? "Warzone"
+    : isInRocketQueue
+      ? "Rocket League"
+      : null;
+
   return (
     <SiteShell>
-      {/* Auto refresh DB -> la team apparaît sans refresh manuel */}
+      {/* Auto refresh DB -> les teams apparaissent sans refresh manuel */}
       <ProfileAutoRefresh intervalMs={5000} />
 
       <div className="grid gap-6">
+        {/* HEADER */}
         <div className="neon-card p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
             Profil
@@ -99,118 +259,165 @@ export default async function ProfilePage({
             Mon profil joueur
           </h2>
           <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-            Configure tes informations de jeu, gère ta présence dans le pool de
-            mix et consulte ta dernière équipe assignée.
+            Gère ta présence dans les files de match (Warzone / Rocket League),
+            génère un mix si aucun admin n’est connecté, et consulte tes dernières
+            équipes.
           </p>
+
+          {activeQueueLabel ? (
+            <p className="mt-4 text-sm text-white/80">
+              File active :{" "}
+              <span className="font-semibold text-white">{activeQueueLabel}</span>
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-white/60">
+              Tu n’es dans aucune file actuellement.
+            </p>
+          )}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* FEEDBACK */}
+        {errorMessage ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
+          </div>
+        ) : null}
+
+        {isSuccess ? (
+          <div className="neon-card p-5">
+            <p className="text-sm font-medium text-emerald-400">
+              Profil mis à jour avec succès.
+            </p>
+          </div>
+        ) : null}
+
+        {/* ===================== */}
+        {/* WARZONE (queue + team juste dessous) */}
+        {/* ===================== */}
+        <div className="grid gap-6">
+          {/* WARZONE QUEUE */}
           <div className="neon-card p-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-              Statut de participation
+              Warzone Mix
             </p>
 
             <h3 className="mt-3 text-2xl font-bold text-white">
-              {user.isAvailableForMix ? "En file de combat" : "Hors file de combat"}
+              {isInWarzoneQueue ? "En file Warzone" : "Hors file Warzone"}
             </h3>
 
             <p className="neon-text-muted mt-3 text-sm leading-6">
-              {user.isAvailableForMix
-                ? "Tu es actuellement visible dans le pool de mix des admins."
-                : "Active ce statut pour apparaître dans le pool de mix des admins."}
+              Rejoins la file Warzone pour être pris en compte dans le mix.
+              {isInRocketQueue
+                ? " Tu es actuellement dans Rocket League : rejoindre Warzone doit te retirer de l’autre file."
+                : ""}
             </p>
 
             <div className="mt-4">
-              <span
-                className={
-                  user.isAvailableForMix
-                    ? "inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300"
-                    : "inline-flex rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white/70"
-                }
-              >
-                {user.isAvailableForMix ? "Prêt au déploiement" : "En attente"}
+              <span className={getBadgeClass(isInWarzoneQueue)}>
+                {isInWarzoneQueue ? "Prêt (Warzone)" : "En attente"}
               </span>
             </div>
 
-            <form action={toggleMixAvailability} className="mt-5">
-              <button
-                type="submit"
-                className={`w-full px-4 py-3 ${
-                  user.isAvailableForMix ? "neon-button-secondary" : "neon-button"
-                }`}
-              >
-                {user.isAvailableForMix
-                  ? "Quitter la file de combat"
-                  : "Entrer dans la file de combat"}
-              </button>
-            </form>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <form action={toggleMixAvailability}>
+                <input type="hidden" name="game" value="WARZONE" />
+                <button
+                  type="submit"
+                  className={`w-full px-4 py-3 ${
+                    isInWarzoneQueue ? "neon-button-secondary" : "neon-button"
+                  }`}
+                >
+                  {isInWarzoneQueue ? "Quitter Warzone" : "Rejoindre Warzone"}
+                </button>
+              </form>
+
+              <form action={generateMix}>
+                <input type="hidden" name="game" value="WARZONE" />
+                <button
+                  type="submit"
+                  className="neon-button-secondary w-full px-4 py-3"
+                  disabled={!isInWarzoneQueue}
+                  title={
+                    isInWarzoneQueue
+                      ? "Générer si autorisé (0 admin en ligne ou sélection lock)"
+                      : "Rejoins la file Warzone pour pouvoir générer quand c’est permis"
+                  }
+                >
+                  Générer (Warzone)
+                </button>
+              </form>
+            </div>
 
             <p className="neon-text-muted mt-4 text-xs leading-6">
-              Tu restes dans la file tant que tu ne te retires pas manuellement ou
-              que tu ne te déconnectes pas.
+              Génération joueur : possible uniquement s’il n’y a aucun admin
+              connecté, ou si tu es l’utilisateur sélectionné comme générateur.
             </p>
           </div>
 
-          <div className="neon-card p-6 lg:col-span-2">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
-              Mon équipe actuelle
+          {/* WARZONE TEAM */}
+          <div className="neon-card p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
+              Mon équipe Warzone
             </p>
 
-            {currentTeam ? (
+            {warzoneTeam ? (
               <>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <h3 className="text-2xl font-bold text-white">
-                    Team {currentTeam.teamNumber}
-                  </h3>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {getTeamDisplayName({
+                        game: "WARZONE",
+                        sessionId: warzoneTeam.session.id,
+                        teamNumber: warzoneTeam.teamNumber,
+                      })}
+                    </h3>
+                    <p className="mt-1 text-xs text-white/60">
+                      Équipe #{warzoneTeam.teamNumber}
+                    </p>
+                  </div>
 
                   <span className="neon-badge">
-                    Session {currentTeam.session.id.slice(-6).toUpperCase()}
+                    Session {warzoneTeam.session.id.slice(-6).toUpperCase()}
                   </span>
 
                   <span className="neon-badge">
-                    {currentTeam.members.length} joueur
-                    {currentTeam.members.length > 1 ? "s" : ""}
+                    {warzoneTeam.members.length} joueur
+                    {warzoneTeam.members.length > 1 ? "s" : ""}
                   </span>
                 </div>
 
                 <p className="neon-text-muted mt-4 text-sm leading-6">
-                  Voici ta dernière escouade générée. Tu peux retrouver ici tes
-                  coéquipiers actuels.
+                  Dernière escouade Warzone générée.
                 </p>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {currentTeam.members.map((member) => {
+                  {warzoneTeam.members.map((member) => {
                     const memberName =
                       member.user?.displayName ??
                       member.tempPlayer?.nickname ??
                       "Joueur inconnu";
 
-                    const memberSecondary =
-                      member.user?.username
-                        ? `@${member.user.username}`
-                        : "Joueur temporaire";
+                    const memberSecondary = member.user?.username
+                      ? `@${member.user.username}`
+                      : "Joueur temporaire";
 
                     const memberWarzone =
                       member.user?.warzoneUsername ??
                       member.tempPlayer?.nickname ??
                       "Non renseigné";
 
-                    const memberPlatform =
-                      member.user?.platform ?? "Temporaire";
+                    const memberPlatform = member.user?.platform ?? "Temporaire";
 
                     return (
                       <div key={member.id} className="neon-card-soft p-4">
                         <p className="font-semibold text-white">{memberName}</p>
-
                         <p className="neon-text-muted mt-1 text-sm">
                           {memberSecondary}
                         </p>
-
                         <p className="neon-text-muted mt-2 text-sm">
                           Warzone :{" "}
                           <span className="text-white">{memberWarzone}</span>
                         </p>
-
                         <p className="neon-text-muted mt-1 text-sm">
                           Plateforme :{" "}
                           <span className="text-white">{memberPlatform}</span>
@@ -231,173 +438,360 @@ export default async function ProfilePage({
               </>
             ) : (
               <p className="neon-text-muted mt-4 text-sm">
-                Aucune équipe générée pour toi pour le moment.
+                Aucune équipe Warzone générée pour toi pour le moment.
               </p>
             )}
           </div>
         </div>
 
-        <div className="neon-card p-8">
-          <form action={updateProfile} className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Nom affiché
-              </label>
-              <input
-                name="displayName"
-                type="text"
-                required
-                defaultValue={user.displayName}
-                className="w-full px-4 py-3"
-              />
+        {/* ===================== */}
+        {/* ROCKET LEAGUE (queue + team juste dessous) */}
+        {/* ===================== */}
+        <div className="grid gap-6">
+          {/* ROCKET QUEUE */}
+          <div className="neon-card p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
+              Rocket League Mix
+            </p>
+
+            <h3 className="mt-3 text-2xl font-bold text-white">
+              {isInRocketQueue ? "En file Rocket League" : "Hors file Rocket League"}
+            </h3>
+
+            <p className="neon-text-muted mt-3 text-sm leading-6">
+              Mix Rocket League : génération en{" "}
+              <span className="text-white">3v3</span> si possible, sinon{" "}
+              <span className="text-white">2v2</span>. Les équipes respectent les
+              rangs (écart limité).
+              {isInWarzoneQueue
+                ? " Tu es actuellement en Warzone : rejoindre Rocket League doit te retirer de l’autre file."
+                : ""}
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className={getBadgeClass(isInRocketQueue)}>
+                {isInRocketQueue ? "Prêt (RL)" : "En attente"}
+              </span>
+
+              <span className="neon-badge">
+                Rang : {user.rocketLeagueRank ?? "Non renseigné"}
+              </span>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Email
-              </label>
-              <input
-                type="email"
-                value={user.email}
-                disabled
-                className="w-full px-4 py-3 opacity-70"
-              />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <form action={toggleMixAvailability}>
+                <input type="hidden" name="game" value="ROCKET_LEAGUE" />
+                <button
+                  type="submit"
+                  className={`w-full px-4 py-3 ${
+                    isInRocketQueue ? "neon-button-secondary" : "neon-button"
+                  }`}
+                >
+                  {isInRocketQueue
+                    ? "Quitter Rocket League"
+                    : "Rejoindre Rocket League"}
+                </button>
+              </form>
+
+              <form action={generateMix}>
+                <input type="hidden" name="game" value="ROCKET_LEAGUE" />
+                <button
+                  type="submit"
+                  className="neon-button-secondary w-full px-4 py-3"
+                  disabled={!isInRocketQueue}
+                  title={
+                    isInRocketQueue
+                      ? "Générer si autorisé (0 admin en ligne ou sélection lock)"
+                      : "Rejoins la file Rocket League pour pouvoir générer quand c’est permis"
+                  }
+                >
+                  Générer (RL)
+                </button>
+              </form>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Pseudo Warzone
-              </label>
-              <input
-                name="warzoneUsername"
-                type="text"
-                required
-                defaultValue={user.warzoneUsername}
-                className="w-full px-4 py-3"
-              />
-            </div>
+            {user.rocketLeagueRank ? null : (
+              <p className="mt-4 text-xs text-amber-300">
+                Renseigne ton rang Rocket League dans “Modifier mes informations”
+                pour éviter “rank_missing”.
+              </p>
+            )}
+          </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Activision ID
-              </label>
-              <input
-                name="activisionId"
-                type="text"
-                defaultValue={user.activisionId ?? ""}
-                placeholder="Pseudo#1234567"
-                className="w-full px-4 py-3"
-              />
-            </div>
+          {/* ROCKET TEAM */}
+          <div className="neon-card p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
+              Mon équipe Rocket League
+            </p>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Plateforme
-              </label>
-              <select
-                name="platform"
-                defaultValue={user.platform ?? ""}
-                className="w-full px-4 py-3"
-              >
-                <option value="">Choisir</option>
-                <option value="PC">PC</option>
-                <option value="PS5">PS5</option>
-                <option value="PS4">PS4</option>
-                <option value="XBOX_SERIES">Xbox Series</option>
-                <option value="XBOX_ONE">Xbox One</option>
-                <option value="OTHER">Autre</option>
-              </select>
-            </div>
+            {rocketTeam ? (
+              <>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {getTeamDisplayName({
+                        game: "ROCKET_LEAGUE",
+                        sessionId: rocketTeam.session.id,
+                        teamNumber: rocketTeam.teamNumber,
+                      })}
+                    </h3>
+                    <p className="mt-1 text-xs text-white/60">
+                      Équipe #{rocketTeam.teamNumber}
+                    </p>
+                  </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Rôle préféré
-              </label>
-              <select
-                name="preferredRole"
-                defaultValue={user.preferredRole ?? "NONE"}
-                className="w-full px-4 py-3"
-              >
-                <option value="NONE">Aucun</option>
-                <option value="RUSH">Rush</option>
-                <option value="SUPPORT">Support</option>
-                <option value="SNIPE">Snipe</option>
-                <option value="FLEX">Flex</option>
-                <option value="IGL">IGL</option>
-              </select>
-            </div>
+                  <span className="neon-badge">
+                    Session {rocketTeam.session.id.slice(-6).toUpperCase()}
+                  </span>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Discord
-              </label>
-              <input
-                name="discordUsername"
-                type="text"
-                defaultValue={user.discordUsername ?? ""}
-                placeholder="pseudo_discord"
-                className="w-full px-4 py-3"
-              />
-            </div>
+                  <span className="neon-badge">
+                    {rocketTeam.members.length} joueur
+                    {rocketTeam.members.length > 1 ? "s" : ""}
+                  </span>
+                </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                WhatsApp
-              </label>
-              <input
-                name="whatsappNumber"
-                type="text"
-                defaultValue={user.whatsappNumber ?? ""}
-                placeholder="+33600000000"
-                className="w-full px-4 py-3"
-              />
-            </div>
+                <p className="neon-text-muted mt-4 text-sm leading-6">
+                  Dernière escouade Rocket League générée.
+                </p>
 
-            <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
-              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <input
-                  name="micAvailable"
-                  type="checkbox"
-                  defaultChecked={user.micAvailable}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-white">Micro disponible</span>
-              </label>
+                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {rocketTeam.members.map((member) => {
+                    const memberName =
+                      member.user?.displayName ??
+                      member.tempPlayer?.nickname ??
+                      "Joueur inconnu";
 
-              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <input
-                  name="whatsappOptIn"
-                  type="checkbox"
-                  defaultChecked={user.whatsappOptIn}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-white">
-                  J’accepte les notifications WhatsApp
-                </span>
-              </label>
-            </div>
+                    const memberSecondary = member.user?.username
+                      ? `@${member.user.username}`
+                      : "Joueur temporaire";
 
-            {errorMessage ? (
-              <div className="md:col-span-2">
-                <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
-              </div>
-            ) : null}
+                    const memberRank = member.user?.rocketLeagueRank ?? "Rang non renseigné";
 
-            {isSuccess ? (
-              <div className="md:col-span-2">
-                <p className="text-sm font-medium text-emerald-400">
-                  Profil mis à jour avec succès.
+                    return (
+                      <div key={member.id} className="neon-card-soft p-4">
+                        <p className="font-semibold text-white">{memberName}</p>
+                        <p className="neon-text-muted mt-1 text-sm">
+                          {memberSecondary}
+                        </p>
+                        <p className="neon-text-muted mt-2 text-sm">
+                          Rang RL :{" "}
+                          <span className="text-white">{memberRank}</span>
+                        </p>
+
+                        {member.tempPlayer?.note ? (
+                          <p className="neon-text-muted mt-2 text-xs">
+                            Note :{" "}
+                            <span className="text-white">
+                              {member.tempPlayer.note}
+                            </span>
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="neon-text-muted mt-4 text-sm">
+                Aucune équipe Rocket League générée pour toi pour le moment.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ===================== */}
+        {/* MODIFIER MES INFOS (repliable) */}
+        {/* ===================== */}
+        <details className="neon-card overflow-hidden p-0 group">
+          <summary className="cursor-pointer list-none p-6 md:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300/75">
+                  Profil
+                </p>
+                <h3 className="mt-2 text-xl font-bold text-white">
+                  Modifier mes informations
+                </h3>
+                <p className="neon-text-muted mt-2 text-sm">
+                  Clique pour ouvrir / fermer le formulaire.
                 </p>
               </div>
-            ) : null}
 
-            <div className="md:col-span-2">
-              <button type="submit" className="neon-button w-full px-4 py-3">
-                Enregistrer les modifications
-              </button>
+              <span className="text-white/70 transition-transform duration-200 group-open:rotate-180">
+                ▼
+              </span>
             </div>
-          </form>
-        </div>
+          </summary>
+
+          <div className="border-t border-white/8 p-6 md:p-8">
+            <form action={updateProfile} className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Nom affiché
+                </label>
+                <input
+                  name="displayName"
+                  type="text"
+                  required
+                  defaultValue={user.displayName}
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={user.email}
+                  disabled
+                  className="w-full px-4 py-3 opacity-70"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Pseudo Warzone
+                </label>
+                <input
+                  name="warzoneUsername"
+                  type="text"
+                  required
+                  defaultValue={user.warzoneUsername}
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Activision ID
+                </label>
+                <input
+                  name="activisionId"
+                  type="text"
+                  defaultValue={user.activisionId ?? ""}
+                  placeholder="Pseudo#1234567"
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Plateforme
+                </label>
+                <select
+                  name="platform"
+                  defaultValue={user.platform ?? ""}
+                  className="w-full px-4 py-3"
+                >
+                  <option value="">Choisir</option>
+                  <option value="PC">PC</option>
+                  <option value="PS5">PS5</option>
+                  <option value="PS4">PS4</option>
+                  <option value="XBOX_SERIES">Xbox Series</option>
+                  <option value="XBOX_ONE">Xbox One</option>
+                  <option value="OTHER">Autre</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Rôle préféré (Warzone)
+                </label>
+                <select
+                  name="preferredRole"
+                  defaultValue={user.preferredRole ?? "NONE"}
+                  className="w-full px-4 py-3"
+                >
+                  <option value="NONE">Aucun</option>
+                  <option value="RUSH">Rush</option>
+                  <option value="SUPPORT">Support</option>
+                  <option value="SNIPE">Snipe</option>
+                  <option value="FLEX">Flex</option>
+                  <option value="IGL">IGL</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Rang Rocket League
+                </label>
+                <select
+                  name="rocketLeagueRank"
+                  defaultValue={user.rocketLeagueRank ?? ""}
+                  className="w-full px-4 py-3"
+                >
+                  <option value="">Non renseigné</option>
+                  <option value="BRONZE">Bronze</option>
+                  <option value="SILVER">Argent</option>
+                  <option value="GOLD">Or</option>
+                  <option value="PLATINUM">Platine</option>
+                  <option value="DIAMOND">Diamant</option>
+                  <option value="CHAMPION">Champion</option>
+                  <option value="GRAND_CHAMPION">Grand Champion</option>
+                  <option value="SSL">SSL</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  Discord
+                </label>
+                <input
+                  name="discordUsername"
+                  type="text"
+                  defaultValue={user.discordUsername ?? ""}
+                  placeholder="pseudo_discord"
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-white">
+                  WhatsApp
+                </label>
+                <input
+                  name="whatsappNumber"
+                  type="text"
+                  defaultValue={user.whatsappNumber ?? ""}
+                  placeholder="+33600000000"
+                  className="w-full px-4 py-3"
+                />
+              </div>
+
+              <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <input
+                    name="micAvailable"
+                    type="checkbox"
+                    defaultChecked={user.micAvailable}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm text-white">Micro disponible</span>
+                </label>
+
+                <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <input
+                    name="whatsappOptIn"
+                    type="checkbox"
+                    defaultChecked={user.whatsappOptIn}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm text-white">
+                    J’accepte les notifications WhatsApp
+                  </span>
+                </label>
+              </div>
+
+              <div className="md:col-span-2">
+                <button type="submit" className="neon-button w-full px-4 py-3">
+                  Enregistrer les modifications
+                </button>
+              </div>
+            </form>
+          </div>
+        </details>
       </div>
     </SiteShell>
   );

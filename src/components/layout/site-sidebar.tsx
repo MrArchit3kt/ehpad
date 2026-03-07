@@ -69,29 +69,9 @@ const adminLinks = [
     icon: Users,
   },
   {
-    href: "/admin/mix",
-    label: "Admin Mix",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/admin/events",
-    label: "Admin Events",
-    icon: CalendarDays,
-  },
-  {
-    href: "/admin/reglement",
-    label: "Admin Règlement",
-    icon: Shield,
-  },
-  {
     href: "/admin/contact",
     label: "Admin Contact",
     icon: Mail,
-  },
-  {
-    href: "/admin/settings",
-    label: "Settings",
-    icon: Settings,
   },
 ];
 

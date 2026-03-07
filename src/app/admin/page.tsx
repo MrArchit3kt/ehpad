@@ -12,6 +12,8 @@ import {
   Mail,
   SlidersHorizontal,
   UserCheck,
+  Target,
+  Gamepad2,
 } from "lucide-react";
 import { SiteShell } from "@/components/layout/site-shell";
 import { requireAdmin } from "@/server/auth/session";
@@ -30,10 +32,17 @@ const cards = [
     icon: UserCheck,
   },
   {
-    href: "/admin/mix",
-    title: "Mix",
-    description: "Pool, ajout manuel, joueurs temporaires et génération des équipes.",
-    icon: LayoutDashboard,
+    href: "/admin/mix/warzone",
+    title: "Warzone Mix",
+    description: "Pool Warzone, invités, sélection admin générateur, génération équipes.",
+    icon: Target,
+  },
+
+  {
+    href: "/admin/mix/rocket-league",
+    title: "Rocket League Mix",
+    description: "File RL, 2v2 / 3v3, rangs, génération par niveau.",
+    icon: Gamepad2,
   },
   {
     href: "/admin/events",

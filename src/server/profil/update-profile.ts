@@ -5,6 +5,17 @@ import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { requireAuth } from "@/server/auth/session";
 
+const rocketLeagueRankEnum = z.enum([
+  "BRONZE",
+  "SILVER",
+  "GOLD",
+  "PLATINUM",
+  "DIAMOND",
+  "CHAMPION",
+  "GRAND_CHAMPION",
+  "SSL",
+]);
+
 const updateProfileSchema = z.object({
   displayName: z.string().min(2).max(40),
   warzoneUsername: z.string().min(2).max(40),
@@ -19,6 +30,9 @@ const updateProfileSchema = z.object({
   whatsappNumber: z.string().max(30).optional(),
   micAvailable: z.boolean().optional(),
   whatsappOptIn: z.boolean().optional(),
+
+  // ✅ Rocket League
+  rocketLeagueRank: rocketLeagueRankEnum.optional(),
 });
 
 function emptyToUndefined(value: FormDataEntryValue | null) {
@@ -33,6 +47,9 @@ export async function updateProfile(formData: FormData) {
     redirect("/login");
   }
 
+  // RL rank : on accepte "" => undefined
+  const rlRankRaw = emptyToUndefined(formData.get("rocketLeagueRank"));
+
   const parsed = updateProfileSchema.safeParse({
     displayName: String(formData.get("displayName") ?? ""),
     warzoneUsername: String(formData.get("warzoneUsername") ?? ""),
@@ -43,6 +60,8 @@ export async function updateProfile(formData: FormData) {
     whatsappNumber: emptyToUndefined(formData.get("whatsappNumber")),
     micAvailable: formData.get("micAvailable") === "on",
     whatsappOptIn: formData.get("whatsappOptIn") === "on",
+
+    rocketLeagueRank: rlRankRaw as any, // validé par zod enum si présent
   });
 
   if (!parsed.success) {
@@ -64,6 +83,9 @@ export async function updateProfile(formData: FormData) {
         whatsappNumber: data.whatsappNumber,
         micAvailable: Boolean(data.micAvailable),
         whatsappOptIn: Boolean(data.whatsappOptIn),
+
+        // ✅ Rocket League
+        rocketLeagueRank: data.rocketLeagueRank ?? null,
       },
     });
   } catch (error) {
