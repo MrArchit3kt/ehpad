@@ -24,15 +24,16 @@ export async function setMixGenerator(formData: FormData) {
   const selectedAdminId = String(formData.get("selectedAdminId") ?? "").trim();
 
   try {
+    // ✅ si on clear la sélection
     if (!selectedAdminId) {
       await db.mixGenerationLock.upsert({
-        where: { id: "main" },
+        where: { game: "WARZONE" },
         create: {
-          id: "main",
-          selectedAdminId: null,
+          game: "WARZONE",
+          selectedUserId: null,
         },
         update: {
-          selectedAdminId: null,
+          selectedUserId: null,
         },
       });
 
@@ -54,6 +55,7 @@ export async function setMixGenerator(formData: FormData) {
       redirect("/admin/mix?error=server");
     }
 
+    // ✅ autorise ADMIN + SUPER_ADMIN
     const allowedRoles = ["ADMIN", "SUPER_ADMIN"];
 
     if (
@@ -64,14 +66,17 @@ export async function setMixGenerator(formData: FormData) {
       redirect("/admin/mix?error=server");
     }
 
+    // (optionnel) tu peux exiger qu’il soit online si tu veux vraiment :
+    // if (!selectedAdmin.isOnline) redirect("/admin/mix?error=server");
+
     await db.mixGenerationLock.upsert({
-      where: { id: "main" },
+      where: { game: "WARZONE" },
       create: {
-        id: "main",
-        selectedAdminId: selectedAdmin.id,
+        game: "WARZONE",
+        selectedUserId: selectedAdmin.id,
       },
       update: {
-        selectedAdminId: selectedAdmin.id,
+        selectedUserId: selectedAdmin.id,
       },
     });
   } catch (error) {
