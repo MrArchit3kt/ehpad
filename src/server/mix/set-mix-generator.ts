@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
-import type { UserRole } from "@/generated/prisma";
 
 type MixGame = "WARZONE" | "ROCKET_LEAGUE";
 type RLTeamSize = "TWO" | "THREE";
@@ -82,11 +81,12 @@ export async function setMixGenerator(formData: FormData) {
       return redirectTo(game, "?error=server");
     }
 
-    // ✅ Fix TS: on utilise un Set<UserRole>
-    const allowedRoles = new Set<UserRole>(["ADMIN", "SUPER_ADMIN"]);
+    // ✅ Check explicite (évite tout problème TS avec includes/enum types)
+    const isAllowedRole =
+      selectedAdmin.role === "ADMIN" || selectedAdmin.role === "SUPER_ADMIN";
 
     if (
-      !allowedRoles.has(selectedAdmin.role) ||
+      !isAllowedRole ||
       selectedAdmin.status !== "ACTIVE" ||
       selectedAdmin.registrationStatus !== "APPROVED"
     ) {
