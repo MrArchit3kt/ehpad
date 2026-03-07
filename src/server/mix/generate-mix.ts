@@ -25,7 +25,8 @@ function gameFrom(v: unknown): MixGame | null {
 }
 
 function redirectToGame(game: MixGame, qs: string) {
-  const path = game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
+  const path =
+    game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
   redirect(`${path}${qs}`);
 }
 
@@ -127,8 +128,12 @@ function buildRocketLeagueTeams(
 }
 
 function isValidTeam(team: { rocketLeagueRank: string }[]): boolean {
-  const indices = team.map((p) => rankIndex(p.rocketLeagueRank)).filter((x) => x >= 0);
+  const indices = team
+    .map((p) => rankIndex(p.rocketLeagueRank))
+    .filter((x) => x >= 0);
+
   if (indices.length !== team.length) return false;
+
   const min = Math.min(...indices);
   const max = Math.max(...indices);
   return max - min <= 1;
@@ -156,7 +161,9 @@ function findTrio(players: { id: string; rocketLeagueRank: string }[]) {
   return null;
 }
 
-function teamSizeFromLock(v: RocketLeagueTeamSize | null | undefined): 2 | 3 | null {
+function teamSizeFromLock(
+  v: RocketLeagueTeamSize | null | undefined,
+): 2 | 3 | null {
   if (v === "TWO") return 2;
   if (v === "THREE") return 3;
   return null;
@@ -293,8 +300,12 @@ export async function generateMix(formData: FormData) {
           });
 
           // status ASSIGNED
-          const userIds = chunk.filter((p) => p.kind === "USER").map((p) => p.id);
-          const tempIds = chunk.filter((p) => p.kind === "TEMP").map((p) => p.id);
+          const userIds = chunk
+            .filter((p) => p.kind === "USER")
+            .map((p) => p.id);
+          const tempIds = chunk
+            .filter((p) => p.kind === "TEMP")
+            .map((p) => p.id);
 
           if (userIds.length > 0) {
             await db.mixSessionPlayer.updateMany({
@@ -326,6 +337,9 @@ export async function generateMix(formData: FormData) {
       redirectToGame(game, "?error=no_team_size");
     }
 
+    // ✅ TS fix: on fige un type non-null
+    const rlTeamSize = requiredTeamSize as 2 | 3;
+
     const users = await db.user.findMany({
       where: {
         status: "ACTIVE",
@@ -339,7 +353,7 @@ export async function generateMix(formData: FormData) {
       orderBy: { createdAt: "asc" },
     });
 
-    if (users.length < requiredTeamSize) {
+    if (users.length < rlTeamSize) {
       redirectToGame(game, "?error=invalid_count");
     }
 
@@ -348,13 +362,13 @@ export async function generateMix(formData: FormData) {
     }
 
     // strict divisible
-    if (users.length % requiredTeamSize !== 0) {
+    if (users.length % rlTeamSize !== 0) {
       redirectToGame(game, "?error=invalid_count");
     }
 
     const teams = buildRocketLeagueTeams(
       users.map((u) => ({ id: u.id, rocketLeagueRank: u.rocketLeagueRank! })),
-      requiredTeamSize,
+      rlTeamSize,
     );
 
     if (!teams) {
@@ -367,9 +381,9 @@ export async function generateMix(formData: FormData) {
     const session = await db.mixSession.create({
       data: {
         game,
-        rocketLeagueTeamSize: requiredTeamSize === 2 ? "TWO" : "THREE",
+        rocketLeagueTeamSize: rlTeamSize === 2 ? "TWO" : "THREE",
         status: "GENERATED",
-        allowTeamsOfThree: requiredTeamSize === 3,
+        allowTeamsOfThree: rlTeamSize === 3,
         keepRemainderAsBench: false,
         createdById: sessionUser.id,
       },
