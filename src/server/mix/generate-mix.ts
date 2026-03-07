@@ -218,6 +218,9 @@ export async function generateMix(formData: FormData) {
   }
 
   try {
+    // =========================
+    // WARZONE
+    // =========================
     if (game === "WARZONE") {
       const users = await db.user.findMany({
         where: {
@@ -242,6 +245,9 @@ export async function generateMix(formData: FormData) {
 
       const teamSizes = getTeamSizesWarzone(pool.length);
       if (!teamSizes) redirectToGame(game, "?error=invalid_count");
+
+      // ✅ TS fix: teamSizes non-null après le check
+      const sizes = teamSizes as number[];
 
       const shuffled = shuffle(pool);
 
@@ -269,8 +275,8 @@ export async function generateMix(formData: FormData) {
 
       // teams
       let cursor = 0;
-      for (let idx = 0; idx < teamSizes.length; idx += 1) {
-        const size = teamSizes[idx];
+      for (let idx = 0; idx < sizes.length; idx += 1) {
+        const size = sizes[idx];
         const chunk = shuffled.slice(cursor, cursor + size);
 
         const team = await db.team.create({
@@ -311,11 +317,12 @@ export async function generateMix(formData: FormData) {
       redirectToGame(game, `?success=1&session=${session.id}`);
     }
 
-    // === ROCKET LEAGUE (Option B strict 2v2 / 3v3 via lock) ===
+    // =========================
+    // ROCKET LEAGUE (Option B strict 2v2 / 3v3 via lock)
+    // =========================
 
     const requiredTeamSize = teamSizeFromLock(lock?.rocketLeagueTeamSize);
     if (!requiredTeamSize) {
-      // Tu veux forcer un choix 2/3 avant génération
       redirectToGame(game, "?error=no_team_size");
     }
 
@@ -354,6 +361,9 @@ export async function generateMix(formData: FormData) {
       redirectToGame(game, "?error=rank_gap");
     }
 
+    // ✅ TS: non-null après check
+    const rlTeams = teams as { id: string; rocketLeagueRank: string }[][];
+
     const session = await db.mixSession.create({
       data: {
         game,
@@ -366,28 +376,34 @@ export async function generateMix(formData: FormData) {
     });
 
     // entries (bulk)
-    await db.mixSessionPlayer.createMany({
-      data: users.map((u) => ({
-        sessionId: session.id,
-        userId: u.id,
-        status: "WAITING",
-      })),
-    });
+    if (users.length > 0) {
+      await db.mixSessionPlayer.createMany({
+        data: users.map((u) => ({
+          sessionId: session.id,
+          userId: u.id,
+          status: "WAITING",
+        })),
+      });
+    }
 
     // teams
-    for (let idx = 0; idx < teams.length; idx += 1) {
+    for (let idx = 0; idx < rlTeams.length; idx += 1) {
       const team = await db.team.create({
         data: { sessionId: session.id, teamNumber: idx + 1 },
       });
 
-      await db.teamMember.createMany({
-        data: teams[idx].map((p) => ({ teamId: team.id, userId: p.id })),
-      });
+      const ids = rlTeams[idx].map((p) => p.id);
 
-      await db.mixSessionPlayer.updateMany({
-        where: { sessionId: session.id, userId: { in: teams[idx].map((p) => p.id) } },
-        data: { status: "ASSIGNED", assignedAt: new Date() },
-      });
+      if (ids.length > 0) {
+        await db.teamMember.createMany({
+          data: ids.map((id) => ({ teamId: team.id, userId: id })),
+        });
+
+        await db.mixSessionPlayer.updateMany({
+          where: { sessionId: session.id, userId: { in: ids } },
+          data: { status: "ASSIGNED", assignedAt: new Date() },
+        });
+      }
     }
 
     redirectToGame(game, `?success=1&session=${session.id}`);
