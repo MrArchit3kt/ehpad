@@ -47,6 +47,7 @@ export default async function AdminRocketLeagueMixPage({
   const isSuccess = sp.success === "1";
   const isLockSet = sp.lock_set === "1";
   const isLockCleared = sp.lock_cleared === "1";
+  const sessionId = sp.session;
 
   const onlineAdmins = await db.user.findMany({
     where: {
@@ -65,7 +66,9 @@ export default async function AdminRocketLeagueMixPage({
       game: true,
       selectedUserId: true,
       rocketLeagueTeamSize: true,
-      selectedUser: { select: { id: true, displayName: true, username: true, role: true } },
+      selectedUser: {
+        select: { id: true, displayName: true, username: true, role: true },
+      },
     },
   });
 
@@ -98,12 +101,24 @@ export default async function AdminRocketLeagueMixPage({
       ? totalPoolCount % 2 === 0
       : totalPoolCount % 3 === 0);
 
+  // optionnel : dernière session RL (juste pour debug / affichage)
+  const latestSession = sessionId
+    ? await db.mixSession.findUnique({
+        where: { id: sessionId },
+        include: { teams: { include: { members: true } } },
+      })
+    : await db.mixSession.findFirst({
+        where: { game: "ROCKET_LEAGUE" },
+        orderBy: { createdAt: "desc" },
+        include: { teams: { include: { members: true } } },
+      });
+
   return (
     <SiteShell>
       <div className="grid gap-5">
         <div className="neon-card p-5 md:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-            Admin Mix
+            Rocket League Mix (Admin)
           </p>
           <h2 className="neon-title neon-gradient-text mt-2 text-2xl font-black md:text-3xl">
             Rocket League Mix
@@ -150,10 +165,7 @@ export default async function AdminRocketLeagueMixPage({
               </div>
             </div>
 
-            <form
-              action={setMixGenerator}
-              className="grid gap-2 sm:grid-cols-[1fr_180px_auto]"
-            >
+            <form action={setMixGenerator} className="grid gap-2 sm:grid-cols-[1fr_180px_auto]">
               <input type="hidden" name="game" value="ROCKET_LEAGUE" />
 
               <select
@@ -179,25 +191,13 @@ export default async function AdminRocketLeagueMixPage({
                 <option value="THREE">3v3</option>
               </select>
 
-              <button
-                type="submit"
-                className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]"
-              >
+              <button type="submit" className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]">
                 Enregistrer
               </button>
             </form>
 
-            {isLockSet ? (
-              <p className="text-sm font-medium text-cyan-300">
-                Sélection mise à jour.
-              </p>
-            ) : null}
-
-            {isLockCleared ? (
-              <p className="text-sm font-medium text-amber-300">
-                Sélection retirée.
-              </p>
-            ) : null}
+            {isLockSet ? <p className="text-sm font-medium text-cyan-300">Sélection mise à jour.</p> : null}
+            {isLockCleared ? <p className="text-sm font-medium text-amber-300">Sélection retirée.</p> : null}
           </div>
         </div>
 
@@ -219,9 +219,7 @@ export default async function AdminRocketLeagueMixPage({
               <input type="hidden" name="game" value="ROCKET_LEAGUE" />
               <button
                 type="submit"
-                className={`px-5 py-3 ${
-                  canGenerate ? "neon-button" : "neon-button-secondary opacity-60"
-                }`}
+                className={`px-5 py-3 ${canGenerate ? "neon-button" : "neon-button-secondary opacity-60"}`}
                 disabled={!canGenerate}
               >
                 Générer
@@ -232,9 +230,7 @@ export default async function AdminRocketLeagueMixPage({
           {lock?.selectedUser ? (
             <p className="mt-4 text-sm text-white/80">
               Admin autorisé :{" "}
-              <span className="font-semibold text-white">
-                {lock.selectedUser.displayName}
-              </span>
+              <span className="font-semibold text-white">{lock.selectedUser.displayName}</span>
               {lock.selectedUser.username ? ` (@${lock.selectedUser.username})` : ""}.
               {!canCurrentAdminGenerate
                 ? " Tu ne peux pas générer tant que cette sélection est active."
@@ -246,15 +242,8 @@ export default async function AdminRocketLeagueMixPage({
             </p>
           )}
 
-          {errorMessage ? (
-            <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p>
-          ) : null}
-
-          {isSuccess ? (
-            <p className="mt-4 text-sm font-medium text-emerald-400">
-              Équipes générées avec succès.
-            </p>
-          ) : null}
+          {errorMessage ? <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p> : null}
+          {isSuccess ? <p className="mt-4 text-sm font-medium text-emerald-400">Équipes générées avec succès.</p> : null}
 
           <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {poolUsers.length === 0 ? (
@@ -273,6 +262,13 @@ export default async function AdminRocketLeagueMixPage({
               ))
             )}
           </div>
+
+          {/* optionnel: debug session */}
+          {latestSession ? (
+            <p className="mt-4 text-xs text-white/40">
+              Dernière session: {latestSession.id.slice(-6).toUpperCase()}
+            </p>
+          ) : null}
         </div>
       </div>
     </SiteShell>

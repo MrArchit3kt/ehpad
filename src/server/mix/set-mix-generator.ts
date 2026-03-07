@@ -31,28 +31,24 @@ function rlTeamSizeFrom(v: unknown): RLTeamSize | null {
   return null;
 }
 
+function redirectTo(game: MixGame, qs: string) {
+  const backTo =
+    game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
+  redirect(`${backTo}${qs}`);
+}
+
 export async function setMixGenerator(formData: FormData) {
   const admin = await requireAdmin();
   if (!admin) redirect("/dashboard");
 
-  const game = gameFrom(formData.get("game"));
-  if (!game) redirect("/admin");
+  const game = gameFrom(formData.get("game")) ?? "WARZONE";
 
+  // ⚠️ IMPORTANT: le form doit envoyer selectedAdminId (pas selectedUserId)
   const selectedAdminId = String(formData.get("selectedAdminId") ?? "").trim();
   const rlTeamSize = rlTeamSizeFrom(formData.get("rlTeamSize"));
 
-  const backTo =
-    game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
-
   try {
-    // Rocket League : exiger un format si on set (ou si on veut générer derrière)
-    if (game === "ROCKET_LEAGUE") {
-      // si on clear l'admin, on autorise de clear le format aussi (optionnel)
-      // ici : on garde le format si présent, sinon on le met à null
-      // -> tu peux changer selon préférence
-    }
-
-    // ✅ CLEAR sélection admin
+    // ✅ CLEAR sélection
     if (!selectedAdminId) {
       await db.mixGenerationLock.upsert({
         where: { game },
@@ -69,7 +65,7 @@ export async function setMixGenerator(formData: FormData) {
         },
       });
 
-      redirect(`${backTo}?lock_cleared=1`);
+      redirectTo(game, "?lock_cleared=1");
     }
 
     // ✅ Vérifie user cible
@@ -80,24 +76,24 @@ export async function setMixGenerator(formData: FormData) {
         role: true,
         status: true,
         registrationStatus: true,
-        isOnline: true,
       },
     });
 
-    if (!selectedAdmin) redirect(`${backTo}?error=server`);
+    if (!selectedAdmin) redirectTo(game, "?error=server");
 
-    const allowedRoles = ["ADMIN", "SUPER_ADMIN"];
+    const allowedRoles = ["ADMIN", "SUPER_ADMIN"] as const;
+
     if (
       !allowedRoles.includes(selectedAdmin.role) ||
       selectedAdmin.status !== "ACTIVE" ||
       selectedAdmin.registrationStatus !== "APPROVED"
     ) {
-      redirect(`${backTo}?error=server`);
+      redirectTo(game, "?error=server");
     }
 
-    // ✅ RL : exige le choix 2v2/3v3 quand on enregistre
+    // ✅ RL : exige un format
     if (game === "ROCKET_LEAGUE" && !rlTeamSize) {
-      redirect(`${backTo}?error=no_team_size`);
+      redirectTo(game, "?error=no_team_size");
     }
 
     await db.mixGenerationLock.upsert({
@@ -112,11 +108,11 @@ export async function setMixGenerator(formData: FormData) {
         ...(game === "ROCKET_LEAGUE" ? { rocketLeagueTeamSize: rlTeamSize } : {}),
       },
     });
+
+    redirectTo(game, "?lock_set=1");
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     console.error("SET_MIX_GENERATOR_ERROR", error);
-    redirect(`${backTo}?error=server`);
+    redirectTo(game, "?error=server");
   }
-
-  redirect(`${backTo}?lock_set=1`);
 }

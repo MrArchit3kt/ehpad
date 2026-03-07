@@ -43,7 +43,6 @@ function getTeamSizesPreview(total: number): number[] | null {
 
 function formatTeamSizesPreview(total: number) {
   const sizes = getTeamSizesPreview(total);
-
   if (!sizes) return "Impossible";
 
   const teamsOf4 = sizes.filter((size) => size === 4).length;
@@ -56,7 +55,7 @@ function formatTeamSizesPreview(total: number) {
   return parts.join(" + ");
 }
 
-export default async function AdminMixPage({
+export default async function AdminMixWarzonePage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -85,7 +84,7 @@ export default async function AdminMixPage({
     where: {
       status: "ACTIVE",
       registrationStatus: "APPROVED",
-      isAvailableForMix: true,
+      isAvailableForWarzoneMix: true,
     },
     select: {
       id: true,
@@ -114,7 +113,7 @@ export default async function AdminMixPage({
     where: {
       status: "ACTIVE",
       registrationStatus: "APPROVED",
-      isAvailableForMix: false,
+      isAvailableForWarzoneMix: false,
       id: {
         notIn: availableUserIds.length > 0 ? availableUserIds : undefined,
       },
@@ -145,7 +144,6 @@ export default async function AdminMixPage({
     orderBy: { displayName: "asc" },
   });
 
-  // ✅ NEW: PK = game, not id
   const mixLock = await db.mixGenerationLock.findUnique({
     where: { game: "WARZONE" },
     select: {
@@ -189,13 +187,7 @@ export default async function AdminMixPage({
                       platform: true,
                     },
                   },
-                  tempPlayer: {
-                    select: {
-                      id: true,
-                      nickname: true,
-                      note: true,
-                    },
-                  },
+                  tempPlayer: { select: { id: true, nickname: true, note: true } },
                 },
               },
             },
@@ -203,6 +195,7 @@ export default async function AdminMixPage({
         },
       })
     : await db.mixSession.findFirst({
+        where: { game: "WARZONE" },
         orderBy: { createdAt: "desc" },
         include: {
           teams: {
@@ -219,13 +212,7 @@ export default async function AdminMixPage({
                       platform: true,
                     },
                   },
-                  tempPlayer: {
-                    select: {
-                      id: true,
-                      nickname: true,
-                      note: true,
-                    },
-                  },
+                  tempPlayer: { select: { id: true, nickname: true, note: true } },
                 },
               },
             },
@@ -244,8 +231,7 @@ export default async function AdminMixPage({
             Mélangeur d’équipes
           </h2>
           <p className="neon-text-muted mt-3 max-w-3xl text-sm leading-6 md:text-base">
-            Le système répartit les joueurs du pool en équipes de 4 et 3.
-            Aucun remplaçant, aucun joueur laissé de côté.
+            Le système répartit les joueurs du pool en équipes de 4 et 3. Aucun remplaçant, aucun joueur laissé de côté.
           </p>
         </div>
 
@@ -277,13 +263,11 @@ export default async function AdminMixPage({
                 </div>
               </div>
 
-              <form
-                action={setMixGenerator}
-                className="grid gap-2 sm:grid-cols-[1fr_auto]"
-              >
-                {/* ✅ IMPORTANT: name changed */}
+              <form action={setMixGenerator} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input type="hidden" name="game" value="WARZONE" />
+
                 <select
-                  name="selectedUserId"
+                  name="selectedAdminId"
                   defaultValue={mixLock?.selectedUserId ?? ""}
                   className="w-full px-3 py-2.5 text-sm"
                 >
@@ -295,10 +279,7 @@ export default async function AdminMixPage({
                   ))}
                 </select>
 
-                <button
-                  type="submit"
-                  className="neon-button px-4 py-2.5 text-sm sm:min-w-[210px]"
-                >
+                <button type="submit" className="neon-button px-4 py-2.5 text-sm sm:min-w-[210px]">
                   Enregistrer la sélection
                 </button>
               </form>
@@ -319,10 +300,7 @@ export default async function AdminMixPage({
                 </p>
               </div>
 
-              <form
-                action={createTempPlayer}
-                className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
-              >
+              <form action={createTempPlayer} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                 <input
                   name="nickname"
                   type="text"
@@ -336,10 +314,7 @@ export default async function AdminMixPage({
                   placeholder="Note optionnelle"
                   className="w-full px-3 py-2.5 text-sm"
                 />
-                <button
-                  type="submit"
-                  className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]"
-                >
+                <button type="submit" className="neon-button px-4 py-2.5 text-sm sm:min-w-[220px]">
                   Ajouter
                 </button>
               </form>
@@ -354,8 +329,7 @@ export default async function AdminMixPage({
                 Joueurs disponibles
               </p>
               <h3 className="mt-2 text-xl font-bold text-white md:text-2xl">
-                {totalPoolCount} joueur{totalPoolCount > 1 ? "s" : ""} prêt
-                {totalPoolCount > 1 ? "s" : ""}
+                {totalPoolCount} joueur{totalPoolCount > 1 ? "s" : ""} prêt{totalPoolCount > 1 ? "s" : ""}
               </h3>
               <p className="neon-text-muted mt-2 text-sm">
                 Les joueurs restent dans le pool jusqu’à retrait manuel ou déconnexion.
@@ -382,13 +356,10 @@ export default async function AdminMixPage({
               </div>
 
               <form action={generateMix}>
+                <input type="hidden" name="game" value="WARZONE" />
                 <button
                   type="submit"
-                  className={`px-5 py-3 ${
-                    canGenerate
-                      ? "neon-button"
-                      : "neon-button-secondary opacity-60"
-                  }`}
+                  className={`px-5 py-3 ${canGenerate ? "neon-button" : "neon-button-secondary opacity-60"}`}
                   disabled={!canGenerate}
                 >
                   Générer
@@ -403,10 +374,7 @@ export default async function AdminMixPage({
               <span className="font-semibold text-white">
                 {mixLock.selectedUser.displayName}
               </span>
-              {mixLock.selectedUser.username
-                ? ` (@${mixLock.selectedUser.username})`
-                : ""}
-              .
+              {mixLock.selectedUser.username ? ` (@${mixLock.selectedUser.username})` : ""}.
               {!canCurrentAdminGenerate
                 ? " Tu ne peux pas générer tant que cette sélection est active."
                 : " Tu peux générer les équipes."}
@@ -418,9 +386,7 @@ export default async function AdminMixPage({
           )}
 
           {errorMessage ? (
-            <p className="mt-4 text-sm font-medium text-rose-400">
-              {errorMessage}
-            </p>
+            <p className="mt-4 text-sm font-medium text-rose-400">{errorMessage}</p>
           ) : null}
 
           {isSuccess ? (
@@ -464,32 +430,20 @@ export default async function AdminMixPage({
               <>
                 {availableUsers.map((player) => (
                   <div key={`user-${player.id}`} className="neon-card-soft p-3">
-                    <h4 className="truncate text-sm font-bold text-white">
-                      {player.displayName}
-                    </h4>
-                    <p className="neon-text-muted mt-1 truncate text-[11px]">
-                      @{player.username}
-                    </p>
+                    <h4 className="truncate text-sm font-bold text-white">{player.displayName}</h4>
+                    <p className="neon-text-muted mt-1 truncate text-[11px]">@{player.username}</p>
                     <p className="neon-text-muted mt-2 truncate text-[11px]">
-                      Warzone :{" "}
-                      <span className="text-white">
-                        {player.warzoneUsername}
-                      </span>
+                      Warzone : <span className="text-white">{player.warzoneUsername}</span>
                     </p>
                     <p className="neon-text-muted mt-1 truncate text-[11px]">
-                      Plateforme :{" "}
-                      <span className="text-white">
-                        {player.platform ?? "Non renseignée"}
-                      </span>
+                      Plateforme : <span className="text-white">{player.platform ?? "Non renseignée"}</span>
                     </p>
 
                     <div className="mt-2.5">
                       <form action={removePlayerFromPool}>
                         <input type="hidden" name="userId" value={player.id} />
-                        <button
-                          type="submit"
-                          className="neon-button-secondary w-full px-3 py-2 text-xs"
-                        >
+                        <input type="hidden" name="game" value="WARZONE" />
+                        <button type="submit" className="neon-button-secondary w-full px-3 py-2 text-xs">
                           Retirer du pool
                         </button>
                       </form>
@@ -500,15 +454,11 @@ export default async function AdminMixPage({
                 {availableTempPlayers.map((player) => (
                   <div key={`temp-${player.id}`} className="neon-card-soft p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="truncate text-sm font-bold text-white">
-                        {player.nickname}
-                      </h4>
+                      <h4 className="truncate text-sm font-bold text-white">{player.nickname}</h4>
                       <span className="neon-badge text-[10px]">INVITÉ</span>
                     </div>
 
-                    <p className="neon-text-muted mt-2 text-[11px]">
-                      Joueur temporaire sans compte
-                    </p>
+                    <p className="neon-text-muted mt-2 text-[11px]">Joueur temporaire sans compte</p>
 
                     {player.note ? (
                       <p className="neon-text-muted mt-1 truncate text-[11px]">
@@ -518,15 +468,8 @@ export default async function AdminMixPage({
 
                     <div className="mt-2.5">
                       <form action={removePlayerFromPool}>
-                        <input
-                          type="hidden"
-                          name="tempPlayerId"
-                          value={player.id}
-                        />
-                        <button
-                          type="submit"
-                          className="neon-button-secondary w-full px-3 py-2 text-xs"
-                        >
+                        <input type="hidden" name="tempPlayerId" value={player.id} />
+                        <button type="submit" className="neon-button-secondary w-full px-3 py-2 text-xs">
                           Retirer du pool
                         </button>
                       </form>
@@ -549,37 +492,25 @@ export default async function AdminMixPage({
           <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {poolCandidates.length === 0 ? (
               <div className="neon-card-soft p-4">
-                <p className="neon-text-muted text-sm">
-                  Aucun joueur éligible à ajouter pour le moment.
-                </p>
+                <p className="neon-text-muted text-sm">Aucun joueur éligible à ajouter pour le moment.</p>
               </div>
             ) : (
               poolCandidates.map((player) => (
                 <div key={player.id} className="neon-card-soft p-3">
-                  <h4 className="truncate text-sm font-bold text-white">
-                    {player.displayName}
-                  </h4>
-                  <p className="neon-text-muted mt-1 truncate text-[11px]">
-                    @{player.username}
-                  </p>
+                  <h4 className="truncate text-sm font-bold text-white">{player.displayName}</h4>
+                  <p className="neon-text-muted mt-1 truncate text-[11px]">@{player.username}</p>
                   <p className="neon-text-muted mt-2 truncate text-[11px]">
-                    Warzone :{" "}
-                    <span className="text-white">{player.warzoneUsername}</span>
+                    Warzone : <span className="text-white">{player.warzoneUsername}</span>
                   </p>
                   <p className="neon-text-muted mt-1 truncate text-[11px]">
-                    Plateforme :{" "}
-                    <span className="text-white">
-                      {player.platform ?? "Non renseignée"}
-                    </span>
+                    Plateforme : <span className="text-white">{player.platform ?? "Non renseignée"}</span>
                   </p>
 
                   <div className="mt-2.5">
                     <form action={addPlayerToPool}>
                       <input type="hidden" name="userId" value={player.id} />
-                      <button
-                        type="submit"
-                        className="neon-button w-full px-3 py-2 text-xs"
-                      >
+                      <input type="hidden" name="game" value="WARZONE" />
+                      <button type="submit" className="neon-button w-full px-3 py-2 text-xs">
                         Ajouter au pool
                       </button>
                     </form>
@@ -603,8 +534,7 @@ export default async function AdminMixPage({
               </div>
 
               <span className="neon-badge">
-                {latestSession.teams.length} team
-                {latestSession.teams.length > 1 ? "s" : ""}
+                {latestSession.teams.length} team{latestSession.teams.length > 1 ? "s" : ""}
               </span>
             </div>
 
@@ -616,8 +546,7 @@ export default async function AdminMixPage({
                       Team {team.teamNumber}
                     </h4>
                     <span className="neon-badge text-[10px]">
-                      {team.members.length} joueur
-                      {team.members.length > 1 ? "s" : ""}
+                      {team.members.length} joueur{team.members.length > 1 ? "s" : ""}
                     </span>
                   </div>
 
@@ -627,9 +556,7 @@ export default async function AdminMixPage({
                         ? member.user.displayName
                         : member.tempPlayer?.nickname ?? "Invité";
 
-                      const subLabel = member.user
-                        ? `@${member.user.username}`
-                        : "Joueur temporaire";
+                      const subLabel = member.user ? `@${member.user.username}` : "Joueur temporaire";
 
                       const warzone = member.user
                         ? member.user.warzoneUsername
@@ -644,17 +571,11 @@ export default async function AdminMixPage({
                             <p className="truncate text-xs font-semibold text-white md:text-sm">
                               {label}
                             </p>
-                            {!member.user ? (
-                              <span className="neon-badge text-[10px]">INVITÉ</span>
-                            ) : null}
+                            {!member.user ? <span className="neon-badge text-[10px]">INVITÉ</span> : null}
                           </div>
 
-                          <p className="neon-text-muted mt-0.5 truncate text-[11px]">
-                            {subLabel}
-                          </p>
-                          <p className="neon-text-muted mt-1 truncate text-[11px]">
-                            {warzone}
-                          </p>
+                          <p className="neon-text-muted mt-0.5 truncate text-[11px]">{subLabel}</p>
+                          <p className="neon-text-muted mt-1 truncate text-[11px]">{warzone}</p>
                         </div>
                       );
                     })}
