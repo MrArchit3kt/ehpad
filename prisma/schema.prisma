@@ -136,8 +136,13 @@ enum ContactRequestStatus {
   CLOSED
 }
 
+/**
+ * ✅ On sépare complètement Warzone normal / Warzone ranked
+ * => locks séparés, sessions séparées, temp players séparés.
+ */
 enum MixGame {
   WARZONE
+  WARZONE_RANKED
   ROCKET_LEAGUE
 }
 
@@ -155,6 +160,33 @@ enum RocketLeagueRank {
 enum RocketLeagueTeamSize {
   TWO
   THREE
+}
+
+/**
+ * ✅ Warzone Ranked tiers (simple & efficace)
+ * (si tu veux plus tard "Bronze I/II/III" etc, on pourra raffiner)
+ */
+enum WarzoneRankTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  CRIMSON
+  IRIDESCENT
+  TOP_250
+}
+
+/**
+ * ✅ Badges
+ */
+enum BadgeCategory {
+  MEMBERSHIP
+  SKILL
+  ACTIVITY
+  BEHAVIOR
+  EVENT
+  SPECIAL
 }
 
 model SiteConfig {
@@ -227,14 +259,19 @@ model User {
   // Rocket League
   rocketLeagueRank RocketLeagueRank?
 
+  // ✅ Warzone Ranked
+  warzoneRankTier WarzoneRankTier?
+  warzoneRankSr   Int?
+
   isOnline Boolean @default(false)
 
   // ancien flag global (compat)
   isAvailableForMix Boolean @default(false)
 
   // flags par jeu
-  isAvailableForWarzoneMix      Boolean @default(false)
-  isAvailableForRocketLeagueMix Boolean @default(false)
+  isAvailableForWarzoneMix       Boolean @default(false)
+  isAvailableForWarzoneRankedMix Boolean @default(false)
+  isAvailableForRocketLeagueMix  Boolean @default(false)
 
   lastSeenAt  DateTime?
   lastLoginAt DateTime?
@@ -278,27 +315,38 @@ model User {
 
   mixLocksSelected MixGenerationLock[] @relation("MixGenerationLockSelectedUser")
 
+  // ✅ Badges attribués au joueur
+  badges UserBadge[]
+
   @@index([registrationStatus])
   @@index([approvedById])
   @@index([rejectedById])
+
   @@index([isAvailableForWarzoneMix])
+  @@index([isAvailableForWarzoneRankedMix])
   @@index([isAvailableForRocketLeagueMix])
+
   @@index([rocketLeagueRank])
+  @@index([warzoneRankTier])
 }
 
 model TempPlayer {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   nickname String
   note     String? @db.Text
 
   // ✅ Le jeu auquel appartient l'invité
   game MixGame @default(WARZONE)
 
-  // ✅ dispo dans la file du jeu (plus de flag global)
+  // ✅ dispo dans la file du jeu
   isAvailableForMix Boolean @default(true)
 
-  // ✅ pour Rocket League : rang nécessaire si tu veux l’utiliser dans les teams RL
+  // ✅ pour Rocket League : rang si tu veux l’utiliser dans les teams RL
   rocketLeagueRank RocketLeagueRank?
+
+  // (Optionnel futur) si tu veux autoriser invités en ranked :
+  // warzoneRankTier WarzoneRankTier?
+  // warzoneRankSr   Int?
 
   createdById String?
   createdBy   User? @relation("CreatedTempPlayers", fields: [createdById], references: [id], onDelete: SetNull)
@@ -599,4 +647,41 @@ model MixGenerationLock {
   selectedUser User? @relation("MixGenerationLockSelectedUser", fields: [selectedUserId], references: [id], onDelete: SetNull)
 
   @@index([selectedUserId])
+}
+
+/* ===========================
+   ✅ BADGES
+   =========================== */
+
+model Badge {
+  id          String        @id @default(cuid())
+  code        String        @unique // ex: AC2N_MEMBER, TOP_FRAGGER
+  name        String
+  description String        @db.Text
+  category    BadgeCategory
+  icon        String?       // mapping UI (ex: "ac2n", "trophy", "shield")
+  color       String?       // mapping UI (ex: "cyan", "pink")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users UserBadge[]
+
+  @@index([category])
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  note     String?  @db.Text
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([earnedAt])
 }
