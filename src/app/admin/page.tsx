@@ -38,7 +38,7 @@ const cards = [
     icon: Target,
   },
   {
-    href: "/admin/mix/warzone-Ranked",
+    href: "/admin/mix/warzone-ranked",
     title: "Warzone Ranked Mix",
     description: "Pool Warzone, invités, sélection admin générateur, génération équipes.",
     icon: Target,
