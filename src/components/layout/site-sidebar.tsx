@@ -10,75 +10,29 @@ import {
   Users,
   Share2,
   Mail,
-  LayoutDashboard,
 } from "lucide-react";
 import { getSessionUser } from "@/server/auth/session";
 
 const mainLinks = [
-  {
-    href: "/",
-    label: "Accueil",
-    icon: Home,
-  },
-  {
-    href: "/profil",
-    label: "Profil",
-    icon: UserCircle2,
-  },
-  {
-    href: "/events",
-    label: "Événements",
-    icon: CalendarDays,
-  },
-  {
-    href: "/notifications",
-    label: "Notifications",
-    icon: Bell,
-  },
-  {
-    href: "/socials",
-    label: "Réseaux",
-    icon: Share2,
-  },
-  {
-    href: "/contact",
-    label: "Contact",
-    icon: Mail,
-  },
-  {
-    href: "/reglement",
-    label: "Règlement",
-    icon: Shield,
-  },
+  { href: "/", label: "Accueil", icon: Home },
+  { href: "/profil", label: "Profil", icon: UserCircle2 },
+  { href: "/events", label: "Événements", icon: CalendarDays },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/socials", label: "Réseaux", icon: Share2 },
+  { href: "/contact", label: "Contact", icon: Mail },
+  { href: "/reglement", label: "Règlement", icon: Shield },
 ];
 
 const adminLinks = [
-  {
-    href: "/admin",
-    label: "Admin",
-    icon: Settings,
-  },
-  {
-    href: "/admin/players",
-    label: "Admin Players",
-    icon: Users,
-  },
-  {
-    href: "/admin/registrations",
-    label: "Inscriptions",
-    icon: Users,
-  },
-  {
-    href: "/admin/contact",
-    label: "Admin Contact",
-    icon: Mail,
-  },
+  { href: "/admin", label: "Admin", icon: Settings },
+  { href: "/admin/players", label: "Admin Players", icon: Users },
+  { href: "/admin/registrations", label: "Inscriptions", icon: Users },
+  { href: "/admin/contact", label: "Admin Contact", icon: Mail },
 ];
 
 export async function SiteSidebar() {
   const user = await getSessionUser();
-  const canSeeAdmin =
-    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const canSeeAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   return (
     <aside className="hidden w-72 shrink-0 lg:block">
@@ -86,13 +40,18 @@ export async function SiteSidebar() {
         <div className="neon-card p-5">
           <div className="mb-6 border-b border-white/5 pb-5">
             <div className="flex items-center gap-3">
-              <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
-                <Image
-                  src="/images/AC2N-logo.png"
-                  alt="Logo AC2N"
-                  fill
-                  className="object-cover"
-                />
+              {/* ✅ Logo 3D */}
+              <div className="logo-3d logo-3d--auto logo-3d--glow">
+                <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+                  <Image
+                    src="/images/AC2N-logo.png"
+                    alt="Logo AC2N"
+                    fill
+                    sizes="56px"
+                    className="object-contain"
+                    priority
+                  />
+                </div>
               </div>
 
               <div>

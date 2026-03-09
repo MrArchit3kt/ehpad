@@ -12,13 +12,9 @@ export async function SiteHeader() {
   const user = await getSessionUser();
 
   let unreadNotificationsCount = 0;
-
   if (user?.id) {
     unreadNotificationsCount = await db.notification.count({
-      where: {
-        userId: user.id,
-        readAt: null,
-      },
+      where: { userId: user.id, readAt: null },
     });
   }
 
@@ -26,14 +22,18 @@ export async function SiteHeader() {
     <header className="mb-6">
       <div className="neon-card flex flex-col gap-4 p-4 md:p-5 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0 flex items-center gap-4">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
-            <Image
-              src="/images/AC2N-logo.png"
-              alt="Logo AC2N"
-              fill
-              sizes="56px"
-              className="object-cover"
-            />
+          {/* ✅ Logo 3D */}
+          <div className="logo-3d logo-3d--auto logo-3d--glow shrink-0">
+            <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+              <Image
+                src="/images/AC2N-logo.png"
+                alt="Logo AC2N"
+                fill
+                sizes="56px"
+                className="object-contain"
+                priority
+              />
+            </div>
           </div>
 
           <div className="min-w-0">

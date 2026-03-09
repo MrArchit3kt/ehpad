@@ -15,7 +15,6 @@ import {
   Users,
   Share2,
   Mail,
-  LayoutDashboard,
 } from "lucide-react";
 
 const mainLinks = [
@@ -33,7 +32,6 @@ const adminLinks = [
   { href: "/admin/players", label: "Admin Players", icon: Users },
   { href: "/admin/registrations", label: "Admin Inscriptions", icon: Users },
   { href: "/admin/contact", label: "Admin contact", icon: Mail },
-  
 ];
 
 type MobileNavProps = {
@@ -44,13 +42,7 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      document.body.style.overflow = "";
-      return;
-    }
-
-    document.body.style.overflow = "hidden";
-
+    document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -60,13 +52,18 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
     <>
       <div className="mb-4 flex items-center justify-between lg:hidden">
         <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
-            <Image
-              src="/images/AC2N-logo.png"
-              alt="Logo AC2N"
-              fill
-              className="object-cover"
-            />
+          {/* ✅ Logo 3D */}
+          <div className="logo-3d logo-3d--auto logo-3d--glow">
+            <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+              <Image
+                src="/images/AC2N-logo.png"
+                alt="Logo AC2N"
+                fill
+                sizes="40px"
+                className="object-contain"
+                priority
+              />
+            </div>
           </div>
 
           <div>
@@ -102,13 +99,18 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
             <div className="neon-card flex h-full flex-col rounded-none rounded-r-3xl p-4">
               <div className="mb-4 flex shrink-0 items-center justify-between border-b border-white/5 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
-                    <Image
-                      src="/images/AC2N-logo.png"
-                      alt="Logo AC2N"
-                      fill
-                      className="object-cover"
-                    />
+                  {/* ✅ Logo 3D */}
+                  <div className="logo-3d logo-3d--auto logo-3d--glow">
+                    <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+                      <Image
+                        src="/images/AC2N-logo.png"
+                        alt="Logo AC2N"
+                        fill
+                        sizes="40px"
+                        className="object-contain"
+                        priority
+                      />
+                    </div>
                   </div>
 
                   <div>

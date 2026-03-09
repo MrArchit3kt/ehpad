@@ -418,3 +418,55 @@ button {
     animation: none !important;
   }
 }
+
+/* ===========================
+   Logo 3D (Option 3)
+   =========================== */
+
+@keyframes logo-spin-3d {
+  0%   { transform: perspective(900px) rotateX(0deg) rotateY(0deg); }
+  25%  { transform: perspective(900px) rotateX(10deg) rotateY(90deg); }
+  50%  { transform: perspective(900px) rotateX(0deg) rotateY(180deg); }
+  75%  { transform: perspective(900px) rotateX(-10deg) rotateY(270deg); }
+  100% { transform: perspective(900px) rotateX(0deg) rotateY(360deg); }
+}
+
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* Wrapper du logo */
+.logo-3d {
+  display: inline-flex;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Animation auto (douce) */
+.logo-3d--auto {
+  animation:
+    logo-spin-3d 9s linear infinite,
+    logo-float 2.8s ease-in-out infinite;
+}
+
+/* Survol : accélère + un peu plus “wow” */
+.logo-3d--auto:hover {
+  animation:
+    logo-spin-3d 4.8s linear infinite,
+    logo-float 1.8s ease-in-out infinite;
+}
+
+/* Un petit glow propre */
+.logo-3d--glow {
+  filter:
+    drop-shadow(0 0 10px rgba(57, 240, 255, 0.18))
+    drop-shadow(0 0 16px rgba(255, 79, 216, 0.12));
+}
+
+/* Accessibilité */
+@media (prefers-reduced-motion: reduce) {
+  .logo-3d--auto {
+    animation: none !important;
+  }
+}
