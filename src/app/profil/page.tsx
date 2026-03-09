@@ -9,7 +9,7 @@ import { updateProfile } from "@/server/profil/update-profile";
 import { toggleMixAvailability } from "@/server/mix/toggle-mix-availability";
 import { generateMix } from "@/server/mix/generate-mix";
 
-type MixGame = "WARZONE" | "ROCKET_LEAGUE";
+type MixGame = "WARZONE" | "WARZONE_RANKED" | "ROCKET_LEAGUE";
 
 function getErrorMessage(error?: string) {
   switch (error) {
@@ -38,6 +38,10 @@ function getErrorMessage(error?: string) {
     case "rank_gap":
       return "Impossible de créer des teams Rocket League : écart de rang trop important dans les combinaisons.";
 
+    // Warzone Ranked
+    case "ranked_invalid_count":
+      return "Warzone Ranked : mix en 3v3 uniquement → il faut un nombre de joueurs divisible par 3.";
+
     default:
       return null;
   }
@@ -54,36 +58,126 @@ function getBadgeClass(active: boolean) {
    =========================== */
 
 const WARZONE_TEAM_NAMES = [
-  "Les Paras en Pantoufles",
-  "La Squad du Frigo",
-  "Les Snipers du Dimanche",
-  "Les Balles Perdues",
-  "Le Cartel des Pingouins",
-  "Les Moustiques OP",
-  "Les Fantômes du Gulag",
-  "Les Tacticiens Égarés",
-  "Les Croissants Commando",
-  "La Brigade du Tilt",
-  "Les Boucliers en Carton",
-  "Les Ninjas du Lobby",
-  "Les Pixels Vénères",
-  "Les Pépites du Drop",
-  "Les Grenades Poétiques",
-  "La Team Pas Vu Pas Pris",
-  "Les Loups du Toit",
-  "Les Chasseurs de Loadout",
-  "Les Snipers Mal Lunés",
-  "Les Rois du Repli",
-  "Les Caméléons du Smoke",
-  "Les Roquettes du Placard",
-  "Les Croutons Tactiques",
-  "Les Saboteurs Gentils",
-  "Les Dodos du Circle",
-  "Les Pistaches Furtives",
-  "Les Chevaliers du Ping",
-  "La Patrouille du UAV",
-  "Les Chèvres Galactiques",
-  "Les Champs de Mines",
+    "Les Paras en Pantoufles",
+    "La Squad du Frigo",
+    "Les Snipers du Dimanche",
+    "Les Balles Perdues",
+    "Le Cartel des Pingouins",
+    "Les Moustiques OP",
+    "Les Fantômes du Gulag",
+    "Les Tacticiens Égarés",
+    "Les Croissants Commando",
+    "La Brigade du Tilt",
+    "Les Boucliers en Carton",
+    "Les Ninjas du Lobby",
+    "Les Pixels Vénères",
+    "Les Pépites du Drop",
+    "Les Grenades Poétiques",
+    "La Team Pas Vu Pas Pris",
+    "Les Loups du Toit",
+    "Les Chasseurs de Loadout",
+    "Les Snipers Mal Lunés",
+    "Les Rois du Repli",
+    "Les Caméléons du Smoke",
+    "Les Roquettes du Placard",
+    "Les Croutons Tactiques",
+    "Les Saboteurs Gentils",
+    "Les Dodos du Circle",
+    "Les Pistaches Furtives",
+    "Les Chevaliers du Ping",
+    "La Patrouille du UAV",
+    "Les Chèvres Galactiques",
+    "Les Champs de Mines",
+    "Les Alchimistes du Loot",
+    "Les Pêcheurs de Plaques",
+    "Les Bâtisseurs de Cover",
+    "Les Monstres du Mini-Map",
+    "Les VIP du Buy Station",
+    "Les Architectes du Recul",
+    "Les Pilotes de Drone",
+    "Les Rois du Rebond",
+    "Les Pros du Ping",
+    "Les Discrets du Bruit",
+    "Les Grincheux du Gaz",
+    "Les Danseurs de Slide",
+    "Les Survivants du Toit",
+    "Les Poussins du Push",
+    "Les Maîtres du Flanc",
+    "Les Corsaires du Contrat",
+    "Les Barons du Ballon",
+    "Les Asticots du Smoke",
+    "Les Gardiens du Loader",
+    "Les Poètes du Plastron",
+    "Les Glisseurs du Couloir",
+    "Les Cafetiers du Combat",
+    "Les Contournements Express",
+    "Les Trappeurs du Tunnel",
+    "Les Gourmettes du Loot",
+    "Les Sorciers du Son",
+    "Les Éclaireurs du Circle",
+    "Les Pickups de Fortune",
+    "Les Grands Stratèges",
+    "Les Frères du Rebond",
+    "Les Pingouins Parachutistes",
+    "Les Lamas du Lobby",
+    "Les Panda Paraboles",
+    "Les Licornes Tactiques",
+    "Les Chaussettes de Guerre",
+    "Les Casques Croquants",
+    "Les Briques Silencieuses",
+    "Les Bananas Blindées",
+    "Les Tortues Turbo",
+    "Les Renards Radar",
+    "Les Hiboux du Headshot",
+    "Les Marmottes du Midgame",
+    "Les Lynx du Loot",
+    "Les Phoques en Plaques",
+    "Les Hamsters Héroïques",
+    "Les Koalas du Killfeed",
+    "Les Chacals du Champ",
+    "Les Aigles du Toit",
+    "Les Corbeaux du Smoke",
+    "Les Rorquals du Repli",
+    "La Compagnie du Contrat",
+    "La Section Bounty",
+    "La Team Recon Relax",
+    "Le Bureau des UAV",
+    "La Firme des Flancs",
+    "La Guilde du Gulag",
+    "La Confrérie du Circle",
+    "Le Syndicat du Slide",
+    "L’Escadron du Buy",
+    "La Brigade du Drop",
+    "La Troupe du Timing",
+    "La Clique du Cover",
+    "Le Club des Plaques",
+    "Les Amis du Loadout",
+    "Les Artisans du Push",
+    "Les Pros du Reset",
+    "Les As du Self-Revive",
+    "Les Virtuoses du Recoil",
+    "Les Rois du Reposition",
+    "Les Champions du Callout",
+    "Les Vents du Flanc",
+    "Les Ombres du Sud",
+    "Les Éclats du Nord",
+    "Les Étoiles du Toit",
+    "Les Lueurs du Smoke",
+    "Les Orages du Push",
+    "Les Brumes du Mid",
+    "Les Comètes du Drop",
+    "Les Aurores du Repli",
+    "Les Éclaireurs d’Argent",
+    "Les Potes du Ping",
+    "Les Copains du Circle",
+    "Les Gardiens du Good Vibes",
+    "Les Frags Sympas",
+    "Les Aimants à Loot",
+    "Les Calmes du Chaos",
+    "Les Sages du Sprint",
+    "Les Jokers du Jump",
+    "Les Experts du “On y va”",
+    "Les Légendes du “Je couvre”",
 ] as const;
 
 const ROCKET_TEAM_NAMES = [
@@ -133,10 +227,11 @@ function getTeamDisplayName(params: {
   teamNumber: number;
 }) {
   const base = `${params.game}:${params.sessionId}:${params.teamNumber}`;
-  if (params.game === "WARZONE") {
-    return WARZONE_TEAM_NAMES[hashToIndex(base, WARZONE_TEAM_NAMES.length)];
+  if (params.game === "ROCKET_LEAGUE") {
+    return ROCKET_TEAM_NAMES[hashToIndex(base, ROCKET_TEAM_NAMES.length)];
   }
-  return ROCKET_TEAM_NAMES[hashToIndex(base, ROCKET_TEAM_NAMES.length)];
+  // WARZONE + WARZONE_RANKED -> mêmes noms, c'est ok
+  return WARZONE_TEAM_NAMES[hashToIndex(base, WARZONE_TEAM_NAMES.length)];
 }
 
 export default async function ProfilePage({
@@ -156,11 +251,7 @@ export default async function ProfilePage({
   const latestWarzoneTeamMember = await db.teamMember.findFirst({
     where: {
       userId: user.id,
-      team: {
-        session: {
-          game: "WARZONE",
-        },
-      },
+      team: { session: { game: "WARZONE" } },
     },
     orderBy: { addedAt: "desc" },
     include: {
@@ -180,9 +271,39 @@ export default async function ProfilePage({
                   rocketLeagueRank: true,
                 },
               },
-              tempPlayer: {
-                select: { id: true, nickname: true, note: true },
+              tempPlayer: { select: { id: true, nickname: true, note: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // ✅ Dernière team WARZONE_RANKED
+  const latestWarzoneRankedTeamMember = await db.teamMember.findFirst({
+    where: {
+      userId: user.id,
+      team: { session: { game: "WARZONE_RANKED" } },
+    },
+    orderBy: { addedAt: "desc" },
+    include: {
+      team: {
+        include: {
+          session: true,
+          members: {
+            orderBy: { addedAt: "asc" },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  username: true,
+                  warzoneUsername: true,
+                  platform: true,
+                  rocketLeagueRank: true,
+                },
               },
+              tempPlayer: { select: { id: true, nickname: true, note: true } },
             },
           },
         },
@@ -194,11 +315,7 @@ export default async function ProfilePage({
   const latestRocketTeamMember = await db.teamMember.findFirst({
     where: {
       userId: user.id,
-      team: {
-        session: {
-          game: "ROCKET_LEAGUE",
-        },
-      },
+      team: { session: { game: "ROCKET_LEAGUE" } },
     },
     orderBy: { addedAt: "desc" },
     include: {
@@ -218,9 +335,7 @@ export default async function ProfilePage({
                   rocketLeagueRank: true,
                 },
               },
-              tempPlayer: {
-                select: { id: true, nickname: true, note: true },
-              },
+              tempPlayer: { select: { id: true, nickname: true, note: true } },
             },
           },
         },
@@ -229,6 +344,7 @@ export default async function ProfilePage({
   });
 
   const warzoneTeam = latestWarzoneTeamMember?.team ?? null;
+  const warzoneRankedTeam = latestWarzoneRankedTeamMember?.team ?? null;
   const rocketTeam = latestRocketTeamMember?.team ?? null;
 
   const sp = (await searchParams) ?? {};
@@ -236,17 +352,20 @@ export default async function ProfilePage({
   const isSuccess = sp.success === "1";
 
   const isInWarzoneQueue = !!user.isAvailableForWarzoneMix;
+  const isInWarzoneRankedQueue = !!(user as any).isAvailableForWarzoneRankedMix;
   const isInRocketQueue = !!user.isAvailableForRocketLeagueMix;
 
-  const activeQueueLabel = isInWarzoneQueue
-    ? "Warzone"
-    : isInRocketQueue
-      ? "Rocket League"
-      : null;
+  // ✅ label file active (priorité ranked > normal > RL si tu veux)
+  const activeQueueLabel = isInWarzoneRankedQueue
+    ? "Warzone Ranked"
+    : isInWarzoneQueue
+      ? "Warzone"
+      : isInRocketQueue
+        ? "Rocket League"
+        : null;
 
   return (
     <SiteShell>
-      {/* Auto refresh DB -> les teams apparaissent sans refresh manuel */}
       <ProfileAutoRefresh intervalMs={5000} />
 
       <div className="grid gap-6">
@@ -259,20 +378,16 @@ export default async function ProfilePage({
             Mon profil joueur
           </h2>
           <p className="neon-text-muted mt-4 max-w-3xl leading-7">
-            Gère ta présence dans les files de match (Warzone / Rocket League),
-            génère un mix si aucun admin n’est connecté, et consulte tes dernières
-            équipes.
+            Gère ta présence dans les files (Warzone / Warzone Ranked / Rocket League),
+            génère un mix si aucun admin n’est connecté, et consulte tes dernières équipes.
           </p>
 
           {activeQueueLabel ? (
             <p className="mt-4 text-sm text-white/80">
-              File active :{" "}
-              <span className="font-semibold text-white">{activeQueueLabel}</span>
+              File active : <span className="font-semibold text-white">{activeQueueLabel}</span>
             </p>
           ) : (
-            <p className="mt-4 text-sm text-white/60">
-              Tu n’es dans aucune file actuellement.
-            </p>
+            <p className="mt-4 text-sm text-white/60">Tu n’es dans aucune file actuellement.</p>
           )}
         </div>
 
@@ -292,13 +407,13 @@ export default async function ProfilePage({
         ) : null}
 
         {/* ===================== */}
-        {/* WARZONE (queue + team juste dessous) */}
+        {/* WARZONE NORMAL */}
         {/* ===================== */}
         <div className="grid gap-6">
-          {/* WARZONE QUEUE */}
+          {/* QUEUE */}
           <div className="neon-card p-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-              Warzone Mix
+              Warzone Mix (Normal)
             </p>
 
             <h3 className="mt-3 text-2xl font-bold text-white">
@@ -306,10 +421,12 @@ export default async function ProfilePage({
             </h3>
 
             <p className="neon-text-muted mt-3 text-sm leading-6">
-              Rejoins la file Warzone pour être pris en compte dans le mix.
-              {isInRocketQueue
-                ? " Tu es actuellement dans Rocket League : rejoindre Warzone doit te retirer de l’autre file."
-                : ""}
+              Rejoins la file Warzone pour être pris en compte dans le mix normal.
+              {isInWarzoneRankedQueue
+                ? " Tu es en Ranked : rejoindre Warzone normal doit te retirer de la file Ranked."
+                : isInRocketQueue
+                  ? " Tu es dans Rocket League : rejoindre Warzone doit te retirer de l’autre file."
+                  : ""}
             </p>
 
             <div className="mt-4">
@@ -323,9 +440,7 @@ export default async function ProfilePage({
                 <input type="hidden" name="game" value="WARZONE" />
                 <button
                   type="submit"
-                  className={`w-full px-4 py-3 ${
-                    isInWarzoneQueue ? "neon-button-secondary" : "neon-button"
-                  }`}
+                  className={`w-full px-4 py-3 ${isInWarzoneQueue ? "neon-button-secondary" : "neon-button"}`}
                 >
                   {isInWarzoneQueue ? "Quitter Warzone" : "Rejoindre Warzone"}
                 </button>
@@ -347,17 +462,12 @@ export default async function ProfilePage({
                 </button>
               </form>
             </div>
-
-            <p className="neon-text-muted mt-4 text-xs leading-6">
-              Génération joueur : possible uniquement s’il n’y a aucun admin
-              connecté, ou si tu es l’utilisateur sélectionné comme générateur.
-            </p>
           </div>
 
-          {/* WARZONE TEAM */}
+          {/* TEAM */}
           <div className="neon-card p-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pink-300/75">
-              Mon équipe Warzone
+              Mon équipe Warzone (Normal)
             </p>
 
             {warzoneTeam ? (
@@ -371,9 +481,7 @@ export default async function ProfilePage({
                         teamNumber: warzoneTeam.teamNumber,
                       })}
                     </h3>
-                    <p className="mt-1 text-xs text-white/60">
-                      Équipe #{warzoneTeam.teamNumber}
-                    </p>
+                    <p className="mt-1 text-xs text-white/60">Équipe #{warzoneTeam.teamNumber}</p>
                   </div>
 
                   <span className="neon-badge">
@@ -381,54 +489,32 @@ export default async function ProfilePage({
                   </span>
 
                   <span className="neon-badge">
-                    {warzoneTeam.members.length} joueur
-                    {warzoneTeam.members.length > 1 ? "s" : ""}
+                    {warzoneTeam.members.length} joueur{warzoneTeam.members.length > 1 ? "s" : ""}
                   </span>
                 </div>
-
-                <p className="neon-text-muted mt-4 text-sm leading-6">
-                  Dernière escouade Warzone générée.
-                </p>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {warzoneTeam.members.map((member) => {
                     const memberName =
-                      member.user?.displayName ??
-                      member.tempPlayer?.nickname ??
-                      "Joueur inconnu";
-
-                    const memberSecondary = member.user?.username
-                      ? `@${member.user.username}`
-                      : "Joueur temporaire";
-
+                      member.user?.displayName ?? member.tempPlayer?.nickname ?? "Joueur inconnu";
+                    const memberSecondary = member.user?.username ? `@${member.user.username}` : "Joueur temporaire";
                     const memberWarzone =
-                      member.user?.warzoneUsername ??
-                      member.tempPlayer?.nickname ??
-                      "Non renseigné";
-
+                      member.user?.warzoneUsername ?? member.tempPlayer?.nickname ?? "Non renseigné";
                     const memberPlatform = member.user?.platform ?? "Temporaire";
 
                     return (
                       <div key={member.id} className="neon-card-soft p-4">
                         <p className="font-semibold text-white">{memberName}</p>
-                        <p className="neon-text-muted mt-1 text-sm">
-                          {memberSecondary}
-                        </p>
+                        <p className="neon-text-muted mt-1 text-sm">{memberSecondary}</p>
                         <p className="neon-text-muted mt-2 text-sm">
-                          Warzone :{" "}
-                          <span className="text-white">{memberWarzone}</span>
+                          Warzone : <span className="text-white">{memberWarzone}</span>
                         </p>
                         <p className="neon-text-muted mt-1 text-sm">
-                          Plateforme :{" "}
-                          <span className="text-white">{memberPlatform}</span>
+                          Plateforme : <span className="text-white">{memberPlatform}</span>
                         </p>
-
                         {member.tempPlayer?.note ? (
                           <p className="neon-text-muted mt-2 text-xs">
-                            Note :{" "}
-                            <span className="text-white">
-                              {member.tempPlayer.note}
-                            </span>
+                            Note : <span className="text-white">{member.tempPlayer.note}</span>
                           </p>
                         ) : null}
                       </div>
@@ -437,18 +523,147 @@ export default async function ProfilePage({
                 </div>
               </>
             ) : (
-              <p className="neon-text-muted mt-4 text-sm">
-                Aucune équipe Warzone générée pour toi pour le moment.
-              </p>
+              <p className="neon-text-muted mt-4 text-sm">Aucune équipe Warzone pour le moment.</p>
             )}
           </div>
         </div>
 
         {/* ===================== */}
-        {/* ROCKET LEAGUE (queue + team juste dessous) */}
+        {/* WARZONE RANKED */}
         {/* ===================== */}
         <div className="grid gap-6">
-          {/* ROCKET QUEUE */}
+          {/* QUEUE */}
+          <div className="neon-card p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-300/75">
+              Warzone Ranked (Classé)
+            </p>
+
+            <h3 className="mt-3 text-2xl font-bold text-white">
+              {isInWarzoneRankedQueue ? "En file Warzone Ranked" : "Hors file Warzone Ranked"}
+            </h3>
+
+            <p className="neon-text-muted mt-3 text-sm leading-6">
+              Le Ranked est en 3v3 maximum : les équipes doivent être formées uniquement par 3.
+              {isInWarzoneQueue
+                ? " Tu es en Warzone normal : rejoindre Ranked doit te retirer de la file normal."
+                : isInRocketQueue
+                  ? " Tu es dans Rocket League : rejoindre Ranked doit te retirer de l’autre file."
+                  : ""}
+            </p>
+
+            <div className="mt-4">
+              <span className={getBadgeClass(isInWarzoneRankedQueue)}>
+                {isInWarzoneRankedQueue ? "Prêt (Ranked)" : "En attente"}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <form action={toggleMixAvailability}>
+                <input type="hidden" name="game" value="WARZONE_RANKED" />
+                <button
+                  type="submit"
+                  className={`w-full px-4 py-3 ${
+                    isInWarzoneRankedQueue ? "neon-button-secondary" : "neon-button"
+                  }`}
+                >
+                  {isInWarzoneRankedQueue ? "Quitter Ranked" : "Rejoindre Ranked"}
+                </button>
+              </form>
+
+              <form action={generateMix}>
+                <input type="hidden" name="game" value="WARZONE_RANKED" />
+                <button
+                  type="submit"
+                  className="neon-button-secondary w-full px-4 py-3"
+                  disabled={!isInWarzoneRankedQueue}
+                  title={
+                    isInWarzoneRankedQueue
+                      ? "Générer si autorisé (0 admin en ligne ou sélection lock)"
+                      : "Rejoins la file Ranked pour pouvoir générer quand c’est permis"
+                  }
+                >
+                  Générer (Ranked)
+                </button>
+              </form>
+            </div>
+
+            <p className="neon-text-muted mt-4 text-xs leading-6">
+              Ranked : génération possible si autorisé (lock admin) ou s’il n’y a aucun admin connecté.
+            </p>
+          </div>
+
+          {/* TEAM */}
+          <div className="neon-card p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-300/75">
+              Mon équipe Warzone Ranked
+            </p>
+
+            {warzoneRankedTeam ? (
+              <>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {getTeamDisplayName({
+                        game: "WARZONE_RANKED",
+                        sessionId: warzoneRankedTeam.session.id,
+                        teamNumber: warzoneRankedTeam.teamNumber,
+                      })}
+                    </h3>
+                    <p className="mt-1 text-xs text-white/60">
+                      Équipe #{warzoneRankedTeam.teamNumber}
+                    </p>
+                  </div>
+
+                  <span className="neon-badge">
+                    Session {warzoneRankedTeam.session.id.slice(-6).toUpperCase()}
+                  </span>
+
+                  <span className="neon-badge">
+                    {warzoneRankedTeam.members.length} joueur
+                    {warzoneRankedTeam.members.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {warzoneRankedTeam.members.map((member) => {
+                    const memberName =
+                      member.user?.displayName ?? member.tempPlayer?.nickname ?? "Joueur inconnu";
+                    const memberSecondary = member.user?.username ? `@${member.user.username}` : "Joueur temporaire";
+                    const memberWarzone =
+                      member.user?.warzoneUsername ?? member.tempPlayer?.nickname ?? "Non renseigné";
+                    const memberPlatform = member.user?.platform ?? "Temporaire";
+
+                    return (
+                      <div key={member.id} className="neon-card-soft p-4">
+                        <p className="font-semibold text-white">{memberName}</p>
+                        <p className="neon-text-muted mt-1 text-sm">{memberSecondary}</p>
+                        <p className="neon-text-muted mt-2 text-sm">
+                          Warzone : <span className="text-white">{memberWarzone}</span>
+                        </p>
+                        <p className="neon-text-muted mt-1 text-sm">
+                          Plateforme : <span className="text-white">{memberPlatform}</span>
+                        </p>
+                        {member.tempPlayer?.note ? (
+                          <p className="neon-text-muted mt-2 text-xs">
+                            Note : <span className="text-white">{member.tempPlayer.note}</span>
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="neon-text-muted mt-4 text-sm">Aucune équipe Ranked pour le moment.</p>
+            )}
+          </div>
+        </div>
+
+        {/* ===================== */}
+        {/* ROCKET LEAGUE */}
+        {/* ===================== */}
+        <div className="grid gap-6">
+          {/* QUEUE */}
           <div className="neon-card p-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
               Rocket League Mix
@@ -459,12 +674,9 @@ export default async function ProfilePage({
             </h3>
 
             <p className="neon-text-muted mt-3 text-sm leading-6">
-              Mix Rocket League : génération en{" "}
-              <span className="text-white">3v3</span> si possible, sinon{" "}
-              <span className="text-white">2v2</span>. Les équipes respectent les
-              rangs (écart limité).
-              {isInWarzoneQueue
-                ? " Tu es actuellement en Warzone : rejoindre Rocket League doit te retirer de l’autre file."
+              Mix Rocket League : format selon sélection admin (2v2 / 3v3) + contrainte de rang.
+              {isInWarzoneQueue || isInWarzoneRankedQueue
+                ? " Tu es dans une file Warzone : rejoindre Rocket League doit te retirer des files Warzone."
                 : ""}
             </p>
 
@@ -483,13 +695,9 @@ export default async function ProfilePage({
                 <input type="hidden" name="game" value="ROCKET_LEAGUE" />
                 <button
                   type="submit"
-                  className={`w-full px-4 py-3 ${
-                    isInRocketQueue ? "neon-button-secondary" : "neon-button"
-                  }`}
+                  className={`w-full px-4 py-3 ${isInRocketQueue ? "neon-button-secondary" : "neon-button"}`}
                 >
-                  {isInRocketQueue
-                    ? "Quitter Rocket League"
-                    : "Rejoindre Rocket League"}
+                  {isInRocketQueue ? "Quitter Rocket League" : "Rejoindre Rocket League"}
                 </button>
               </form>
 
@@ -499,26 +707,14 @@ export default async function ProfilePage({
                   type="submit"
                   className="neon-button-secondary w-full px-4 py-3"
                   disabled={!isInRocketQueue}
-                  title={
-                    isInRocketQueue
-                      ? "Générer si autorisé (0 admin en ligne ou sélection lock)"
-                      : "Rejoins la file Rocket League pour pouvoir générer quand c’est permis"
-                  }
                 >
                   Générer (RL)
                 </button>
               </form>
             </div>
-
-            {user.rocketLeagueRank ? null : (
-              <p className="mt-4 text-xs text-amber-300">
-                Renseigne ton rang Rocket League dans “Modifier mes informations”
-                pour éviter “rank_missing”.
-              </p>
-            )}
           </div>
 
-          {/* ROCKET TEAM */}
+          {/* TEAM */}
           <div className="neon-card p-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-300/75">
               Mon équipe Rocket League
@@ -535,9 +731,7 @@ export default async function ProfilePage({
                         teamNumber: rocketTeam.teamNumber,
                       })}
                     </h3>
-                    <p className="mt-1 text-xs text-white/60">
-                      Équipe #{rocketTeam.teamNumber}
-                    </p>
+                    <p className="mt-1 text-xs text-white/60">Équipe #{rocketTeam.teamNumber}</p>
                   </div>
 
                   <span className="neon-badge">
@@ -545,45 +739,27 @@ export default async function ProfilePage({
                   </span>
 
                   <span className="neon-badge">
-                    {rocketTeam.members.length} joueur
-                    {rocketTeam.members.length > 1 ? "s" : ""}
+                    {rocketTeam.members.length} joueur{rocketTeam.members.length > 1 ? "s" : ""}
                   </span>
                 </div>
-
-                <p className="neon-text-muted mt-4 text-sm leading-6">
-                  Dernière escouade Rocket League générée.
-                </p>
 
                 <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {rocketTeam.members.map((member) => {
                     const memberName =
-                      member.user?.displayName ??
-                      member.tempPlayer?.nickname ??
-                      "Joueur inconnu";
-
-                    const memberSecondary = member.user?.username
-                      ? `@${member.user.username}`
-                      : "Joueur temporaire";
-
+                      member.user?.displayName ?? member.tempPlayer?.nickname ?? "Joueur inconnu";
+                    const memberSecondary = member.user?.username ? `@${member.user.username}` : "Joueur temporaire";
                     const memberRank = member.user?.rocketLeagueRank ?? "Rang non renseigné";
 
                     return (
                       <div key={member.id} className="neon-card-soft p-4">
                         <p className="font-semibold text-white">{memberName}</p>
-                        <p className="neon-text-muted mt-1 text-sm">
-                          {memberSecondary}
-                        </p>
+                        <p className="neon-text-muted mt-1 text-sm">{memberSecondary}</p>
                         <p className="neon-text-muted mt-2 text-sm">
-                          Rang RL :{" "}
-                          <span className="text-white">{memberRank}</span>
+                          Rang RL : <span className="text-white">{memberRank}</span>
                         </p>
-
                         {member.tempPlayer?.note ? (
                           <p className="neon-text-muted mt-2 text-xs">
-                            Note :{" "}
-                            <span className="text-white">
-                              {member.tempPlayer.note}
-                            </span>
+                            Note : <span className="text-white">{member.tempPlayer.note}</span>
                           </p>
                         ) : null}
                       </div>
@@ -592,15 +768,13 @@ export default async function ProfilePage({
                 </div>
               </>
             ) : (
-              <p className="neon-text-muted mt-4 text-sm">
-                Aucune équipe Rocket League générée pour toi pour le moment.
-              </p>
+              <p className="neon-text-muted mt-4 text-sm">Aucune équipe Rocket League pour le moment.</p>
             )}
           </div>
         </div>
 
         {/* ===================== */}
-        {/* MODIFIER MES INFOS (repliable) */}
+        {/* MODIFIER MES INFOS */}
         {/* ===================== */}
         <details className="neon-card overflow-hidden p-0 group">
           <summary className="cursor-pointer list-none p-6 md:p-8">

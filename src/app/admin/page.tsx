@@ -37,7 +37,12 @@ const cards = [
     description: "Pool Warzone, invités, sélection admin générateur, génération équipes.",
     icon: Target,
   },
-
+  {
+    href: "/admin/mix/warzone-Ranked",
+    title: "Warzone Ranked Mix",
+    description: "Pool Warzone, invités, sélection admin générateur, génération équipes.",
+    icon: Target,
+  },
   {
     href: "/admin/mix/rocket-league",
     title: "Rocket League Mix",

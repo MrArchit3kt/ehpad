@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
 
-type MixGame = "WARZONE" | "ROCKET_LEAGUE";
+type MixGame = "WARZONE" | "WARZONE_RANKED" | "ROCKET_LEAGUE";
 
 const RL_RANKS = [
   "BRONZE",
@@ -19,7 +19,7 @@ const RL_RANKS = [
 ] as const;
 
 const createTempPlayerSchema = z.object({
-  game: z.enum(["WARZONE", "ROCKET_LEAGUE"]).default("WARZONE"),
+  game: z.enum(["WARZONE", "WARZONE_RANKED", "ROCKET_LEAGUE"]).default("WARZONE"),
   nickname: z.string().trim().min(2).max(40),
   note: z.string().trim().max(200).optional(),
   rocketLeagueRank: z.enum(RL_RANKS).optional(),
@@ -35,8 +35,10 @@ function isNextRedirectError(error: unknown) {
   );
 }
 
-function backTo(game: MixGame) {
-  return game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
+function backTo(game: MixGame): string {
+  if (game === "WARZONE") return "/admin/mix/warzone";
+  if (game === "WARZONE_RANKED") return "/admin/mix/warzone-ranked";
+  return "/admin/mix/rocket-league";
 }
 
 export async function createTempPlayer(formData: FormData) {
@@ -44,7 +46,12 @@ export async function createTempPlayer(formData: FormData) {
   if (!admin) redirect("/dashboard");
 
   const rawGame = String(formData.get("game") ?? "WARZONE").trim().toUpperCase();
-  const game: MixGame = rawGame === "ROCKET_LEAGUE" ? "ROCKET_LEAGUE" : "WARZONE";
+  const game: MixGame =
+    rawGame === "ROCKET_LEAGUE"
+      ? "ROCKET_LEAGUE"
+      : rawGame === "WARZONE_RANKED"
+        ? "WARZONE_RANKED"
+        : "WARZONE";
 
   const parsed = createTempPlayerSchema.safeParse({
     game,
@@ -58,10 +65,10 @@ export async function createTempPlayer(formData: FormData) {
     redirect(`${backTo(game)}?error=validation`);
   }
 
-  const { nickname } = parsed.data;
+  const nickname = parsed.data.nickname.trim();
   const note = parsed.data.note?.trim() || null;
 
-  // ✅ IMPORTANT: si les invités RL participent au mix RL, on impose le rang
+  // ✅ RL : impose rang si les invités participent au mix RL
   if (game === "ROCKET_LEAGUE" && !parsed.data.rocketLeagueRank) {
     redirect(`${backTo(game)}?error=rank_missing`);
   }
@@ -100,10 +107,11 @@ export async function createTempPlayer(formData: FormData) {
     await db.tempPlayer.create({
       data: {
         game,
-        nickname: nickname.trim(),
+        nickname,
         note,
         isAvailableForMix: true,
-        rocketLeagueRank: game === "ROCKET_LEAGUE" ? parsed.data.rocketLeagueRank! : null,
+        rocketLeagueRank:
+          game === "ROCKET_LEAGUE" ? parsed.data.rocketLeagueRank! : null,
         createdById: admin.id,
       },
     });

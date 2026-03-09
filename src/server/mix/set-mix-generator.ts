@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
 
-type MixGame = "WARZONE" | "ROCKET_LEAGUE";
+type MixGame = "WARZONE" | "WARZONE_RANKED" | "ROCKET_LEAGUE";
 type RLTeamSize = "TWO" | "THREE";
 
 function isNextRedirectError(error: unknown) {
@@ -20,7 +20,7 @@ function isNextRedirectError(error: unknown) {
 function gameFrom(v: unknown): MixGame | null {
   if (typeof v !== "string") return null;
   const g = v.trim().toUpperCase();
-  if (g === "WARZONE" || g === "ROCKET_LEAGUE") return g as MixGame;
+  if (g === "WARZONE" || g === "WARZONE_RANKED" || g === "ROCKET_LEAGUE") return g as MixGame;
   return null;
 }
 
@@ -31,9 +31,14 @@ function rlTeamSizeFrom(v: unknown): RLTeamSize | null {
   return null;
 }
 
-function redirectTo(game: MixGame, qs: string) {
+function redirectTo(game: MixGame, qs: string): never {
   const backTo =
-    game === "WARZONE" ? "/admin/mix/warzone" : "/admin/mix/rocket-league";
+    game === "WARZONE"
+      ? "/admin/mix/warzone"
+      : game === "WARZONE_RANKED"
+        ? "/admin/mix/warzone-ranked"
+        : "/admin/mix/rocket-league";
+
   redirect(`${backTo}${qs}`);
 }
 
@@ -43,7 +48,9 @@ export async function setMixGenerator(formData: FormData) {
 
   const game = gameFrom(formData.get("game")) ?? "WARZONE";
   const selectedAdminId = String(formData.get("selectedAdminId") ?? "").trim();
-  const rlTeamSize = rlTeamSizeFrom(formData.get("rlTeamSize"));
+
+  // RL uniquement
+  const rlTeamSize = game === "ROCKET_LEAGUE" ? rlTeamSizeFrom(formData.get("rlTeamSize")) : null;
 
   try {
     // ✅ CLEAR sélection
@@ -53,35 +60,24 @@ export async function setMixGenerator(formData: FormData) {
         create: {
           game,
           selectedUserId: null,
-          rocketLeagueTeamSize:
-            game === "ROCKET_LEAGUE" ? (rlTeamSize ?? null) : null,
+          rocketLeagueTeamSize: game === "ROCKET_LEAGUE" ? (rlTeamSize ?? null) : null,
         },
         update: {
           selectedUserId: null,
-          ...(game === "ROCKET_LEAGUE"
-            ? { rocketLeagueTeamSize: rlTeamSize ?? null }
-            : {}),
+          ...(game === "ROCKET_LEAGUE" ? { rocketLeagueTeamSize: rlTeamSize ?? null } : {}),
         },
       });
 
-      return redirectTo(game, "?lock_cleared=1");
+      redirectTo(game, "?lock_cleared=1");
     }
 
     const selectedAdmin = await db.user.findUnique({
       where: { id: selectedAdminId },
-      select: {
-        id: true,
-        role: true,
-        status: true,
-        registrationStatus: true,
-      },
+      select: { id: true, role: true, status: true, registrationStatus: true },
     });
 
-    if (!selectedAdmin) {
-      return redirectTo(game, "?error=server");
-    }
+    if (!selectedAdmin) redirectTo(game, "?error=server");
 
-    // ✅ Check explicite (évite tout problème TS avec includes/enum types)
     const isAllowedRole =
       selectedAdmin.role === "ADMIN" || selectedAdmin.role === "SUPER_ADMIN";
 
@@ -90,12 +86,12 @@ export async function setMixGenerator(formData: FormData) {
       selectedAdmin.status !== "ACTIVE" ||
       selectedAdmin.registrationStatus !== "APPROVED"
     ) {
-      return redirectTo(game, "?error=server");
+      redirectTo(game, "?error=server");
     }
 
     // ✅ RL : exige le choix 2v2/3v3 quand on enregistre
     if (game === "ROCKET_LEAGUE" && !rlTeamSize) {
-      return redirectTo(game, "?error=no_team_size");
+      redirectTo(game, "?error=no_team_size");
     }
 
     await db.mixGenerationLock.upsert({
@@ -111,10 +107,10 @@ export async function setMixGenerator(formData: FormData) {
       },
     });
 
-    return redirectTo(game, "?lock_set=1");
+    redirectTo(game, "?lock_set=1");
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     console.error("SET_MIX_GENERATOR_ERROR", error);
-    return redirectTo(game, "?error=server");
+    redirectTo(game, "?error=server");
   }
 }

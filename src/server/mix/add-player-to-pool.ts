@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
 
-type MixGame = "WARZONE" | "ROCKET_LEAGUE";
+type MixGame = "WARZONE" | "WARZONE_RANKED" | "ROCKET_LEAGUE";
 
 function isNextRedirectError(error: unknown) {
   return (
@@ -18,11 +18,15 @@ function isNextRedirectError(error: unknown) {
 
 function gameFrom(v: unknown): MixGame {
   const g = String(v ?? "").trim().toUpperCase();
-  return g === "ROCKET_LEAGUE" ? "ROCKET_LEAGUE" : "WARZONE";
+  if (g === "ROCKET_LEAGUE") return "ROCKET_LEAGUE";
+  if (g === "WARZONE_RANKED") return "WARZONE_RANKED";
+  return "WARZONE";
 }
 
 function backTo(game: MixGame) {
-  return game === "ROCKET_LEAGUE" ? "/admin/mix/rocket-league" : "/admin/mix/warzone";
+  if (game === "ROCKET_LEAGUE") return "/admin/mix/rocket-league";
+  if (game === "WARZONE_RANKED") return "/admin/mix/warzone-ranked";
+  return "/admin/mix/warzone";
 }
 
 export async function addPlayerToPool(formData: FormData) {
@@ -43,13 +47,34 @@ export async function addPlayerToPool(formData: FormData) {
       redirect(`${backTo(game)}?error=server`);
     }
 
-    await db.user.update({
-      where: { id: user.id },
-      data:
-        game === "ROCKET_LEAGUE"
-          ? { isAvailableForRocketLeagueMix: true, isAvailableForWarzoneMix: false }
-          : { isAvailableForWarzoneMix: true, isAvailableForRocketLeagueMix: false },
-    });
+    if (game === "ROCKET_LEAGUE") {
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          isAvailableForRocketLeagueMix: true,
+          isAvailableForWarzoneMix: false,
+          isAvailableForWarzoneRankedMix: false,
+        },
+      });
+    } else if (game === "WARZONE_RANKED") {
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          isAvailableForWarzoneRankedMix: true,
+          isAvailableForWarzoneMix: false,
+          isAvailableForRocketLeagueMix: false,
+        },
+      });
+    } else {
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          isAvailableForWarzoneMix: true,
+          isAvailableForWarzoneRankedMix: false,
+          isAvailableForRocketLeagueMix: false,
+        },
+      });
+    }
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     console.error("ADD_PLAYER_TO_POOL_ERROR", error);

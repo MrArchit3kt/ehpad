@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAuth } from "@/server/auth/session";
 
-const ALLOWED = ["WARZONE", "ROCKET_LEAGUE"] as const;
+const ALLOWED = ["WARZONE", "WARZONE_RANKED", "ROCKET_LEAGUE"] as const;
 type MixGame = (typeof ALLOWED)[number];
 
 function gameFrom(v: unknown): MixGame | null {
@@ -27,6 +27,7 @@ export async function toggleGameQueue(formData: FormData) {
       status: true,
       registrationStatus: true,
       isAvailableForWarzoneMix: true,
+      isAvailableForWarzoneRankedMix: true,
       isAvailableForRocketLeagueMix: true,
     },
   });
@@ -35,8 +36,12 @@ export async function toggleGameQueue(formData: FormData) {
     redirect("/profil?error=server");
   }
 
+  // toggle la file choisie, et coupe toutes les autres
   const nextWarzone =
     game === "WARZONE" ? !me.isAvailableForWarzoneMix : false;
+
+  const nextWarzoneRanked =
+    game === "WARZONE_RANKED" ? !me.isAvailableForWarzoneRankedMix : false;
 
   const nextRL =
     game === "ROCKET_LEAGUE" ? !me.isAvailableForRocketLeagueMix : false;
@@ -45,7 +50,10 @@ export async function toggleGameQueue(formData: FormData) {
     where: { id: me.id },
     data: {
       isAvailableForWarzoneMix: nextWarzone,
+      isAvailableForWarzoneRankedMix: nextWarzoneRanked,
       isAvailableForRocketLeagueMix: nextRL,
+      isOnline: true,
+      lastSeenAt: new Date(),
     },
   });
 

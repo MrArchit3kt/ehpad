@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/prisma";
 import { requireAdmin } from "@/server/auth/session";
 
-type MixGame = "WARZONE" | "ROCKET_LEAGUE";
+type MixGame = "WARZONE" | "WARZONE_RANKED" | "ROCKET_LEAGUE";
 
 function isNextRedirectError(error: unknown) {
   return (
@@ -18,13 +18,15 @@ function isNextRedirectError(error: unknown) {
 
 function gameFrom(v: unknown): MixGame {
   const g = String(v ?? "").trim().toUpperCase();
-  return g === "ROCKET_LEAGUE" ? "ROCKET_LEAGUE" : "WARZONE";
+  if (g === "ROCKET_LEAGUE") return "ROCKET_LEAGUE";
+  if (g === "WARZONE_RANKED") return "WARZONE_RANKED";
+  return "WARZONE";
 }
 
 function backTo(game: MixGame) {
-  return game === "ROCKET_LEAGUE"
-    ? "/admin/mix/rocket-league"
-    : "/admin/mix/warzone";
+  if (game === "ROCKET_LEAGUE") return "/admin/mix/rocket-league";
+  if (game === "WARZONE_RANKED") return "/admin/mix/warzone-ranked";
+  return "/admin/mix/warzone";
 }
 
 export async function removePlayerFromPool(formData: FormData) {
@@ -39,13 +41,22 @@ export async function removePlayerFromPool(formData: FormData) {
 
   try {
     if (userId) {
-      await db.user.update({
-        where: { id: userId },
-        data:
-          game === "ROCKET_LEAGUE"
-            ? { isAvailableForRocketLeagueMix: false, isOnline: false }
-            : { isAvailableForWarzoneMix: false, isOnline: false },
-      });
+      if (game === "ROCKET_LEAGUE") {
+        await db.user.update({
+          where: { id: userId },
+          data: { isAvailableForRocketLeagueMix: false, isOnline: false },
+        });
+      } else if (game === "WARZONE_RANKED") {
+        await db.user.update({
+          where: { id: userId },
+          data: { isAvailableForWarzoneRankedMix: false, isOnline: false },
+        });
+      } else {
+        await db.user.update({
+          where: { id: userId },
+          data: { isAvailableForWarzoneMix: false, isOnline: false },
+        });
+      }
     } else {
       // ✅ IMPORTANT: retire uniquement sur le bon jeu
       const res = await db.tempPlayer.updateMany({
@@ -54,7 +65,6 @@ export async function removePlayerFromPool(formData: FormData) {
       });
 
       if (res.count === 0) {
-        // soit id invalide, soit mismatch game => on renvoie server
         redirect(`${backTo(game)}?error=server`);
       }
     }
