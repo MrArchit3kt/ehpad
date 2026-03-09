@@ -101,12 +101,12 @@ export function MobileNav({ canSeeAdmin }: MobileNavProps) {
                 <div className="flex items-center gap-3">
                   {/* ✅ Logo 3D */}
                   <div className="logo-3d logo-3d--auto logo-3d--glow">
-                    <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
+                    <div className="logo-3d__inner relative h-14 w-14 overflow-hidden rounded-2xl border border-cyan-400/20 bg-black/30">
                       <Image
                         src="/images/AC2N-logo.png"
                         alt="Logo AC2N"
                         fill
-                        sizes="40px"
+                        sizes="56px"
                         className="object-contain"
                         priority
                       />
