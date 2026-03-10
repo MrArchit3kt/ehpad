@@ -14,7 +14,7 @@ import {
 import { getSessionUser } from "@/server/auth/session";
 
 const mainLinks = [
-  { href: "/", label: "Accueil", icon: Home },
+  { href: "/acceuil", label: "Accueil", icon: Home },
   { href: "/profil", label: "Profil", icon: UserCircle2 },
   { href: "/events", label: "Événements", icon: CalendarDays },
   { href: "/notifications", label: "Notifications", icon: Bell },
