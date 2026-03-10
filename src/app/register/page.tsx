@@ -40,7 +40,6 @@ export default async function RegisterPage({
           <div className="mb-6">
             <div className="mb-3 flex items-center gap-2">
               <span className="neon-badge">Inscription</span>
-              <span className="neon-badge">EHPAD</span>
             </div>
 
             <h1 className="neon-title neon-gradient-text text-3xl font-black">
@@ -61,20 +60,7 @@ export default async function RegisterPage({
                 name="displayName"
                 type="text"
                 required
-                placeholder="Dylan"
-                className="w-full px-4 py-3"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-white">
-                Nom d’utilisateur
-              </label>
-              <input
-                name="username"
-                type="text"
-                required
-                placeholder="dylan_75"
+                placeholder="Pénélope"
                 className="w-full px-4 py-3"
               />
             </div>
