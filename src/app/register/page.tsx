@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth/session";
@@ -9,7 +10,7 @@ function getErrorMessage(error?: string) {
     case "email":
       return "Un compte existe déjà avec cet email.";
     case "username":
-      return "Ce nom d’utilisateur est déjà pris.";
+      return "Impossible de générer un nom d’utilisateur unique. Réessaie.";
     case "validation":
       return "Le formulaire est invalide. Vérifie les champs.";
     case "server":
@@ -25,10 +26,7 @@ export default async function RegisterPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const user = await getSessionUser();
-
-  if (user) {
-    redirect("/profil");
-  }
+  if (user) redirect("/profil");
 
   const sp = (await searchParams) ?? {};
   const errorMessage = getErrorMessage(sp.error);
@@ -80,15 +78,18 @@ export default async function RegisterPage({
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-white">
-                Pseudo Warzone
+                Activision ID (optionnel)
               </label>
               <input
-                name="warzoneUsername"
+                name="activisionId"
                 type="text"
-                required
-                placeholder="TonPseudoWZ"
+                placeholder="Pseudo#1234567"
                 className="w-full px-4 py-3"
               />
+              <p className="neon-text-muted mt-2 text-xs leading-5">
+                Si tu ne le mets pas maintenant, on utilisera ton nom affiché
+                comme pseudo Warzone par défaut (modifiable ensuite).
+              </p>
             </div>
 
             <div>
@@ -104,7 +105,7 @@ export default async function RegisterPage({
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-white">
                 Confirmer le mot de passe
               </label>
