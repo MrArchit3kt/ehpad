@@ -9,8 +9,6 @@ function getErrorMessage(error?: string) {
   switch (error) {
     case "email":
       return "Un compte existe déjà avec cet email.";
-    case "username":
-      return "Impossible de générer un nom d’utilisateur unique. Réessaie.";
     case "validation":
       return "Le formulaire est invalide. Vérifie les champs.";
     case "server":
@@ -50,7 +48,7 @@ export default async function RegisterPage({
           </div>
 
           <form action={registerUser} className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-white">
                 Nom affiché
               </label>
@@ -63,7 +61,7 @@ export default async function RegisterPage({
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-white">
                 Email
               </label>
@@ -76,7 +74,7 @@ export default async function RegisterPage({
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-white">
                 Activision ID (optionnel)
               </label>
@@ -87,8 +85,7 @@ export default async function RegisterPage({
                 className="w-full px-4 py-3"
               />
               <p className="neon-text-muted mt-2 text-xs leading-5">
-                Si tu ne le mets pas maintenant, on utilisera ton nom affiché
-                comme pseudo Warzone par défaut (modifiable ensuite).
+                Si tu ne le mets pas maintenant, on utilisera ton nom affiché comme pseudo Warzone par défaut (modifiable ensuite).
               </p>
             </div>
 
@@ -105,7 +102,7 @@ export default async function RegisterPage({
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="mb-2 block text-sm font-semibold text-white">
                 Confirmer le mot de passe
               </label>
@@ -134,9 +131,7 @@ export default async function RegisterPage({
 
             {errorMessage ? (
               <div className="md:col-span-2">
-                <p className="text-sm font-medium text-rose-400">
-                  {errorMessage}
-                </p>
+                <p className="text-sm font-medium text-rose-400">{errorMessage}</p>
               </div>
             ) : null}
 
